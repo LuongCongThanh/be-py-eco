@@ -49,6 +49,14 @@ git checkout -b feature/123-add-login
 - A local commit template is configured (`.gitmessage`, wired via `git config commit.template`) —
   running plain `git commit` (no `-m`) opens it with the expected structure.
 
+## No AI attribution
+
+Do not mention any AI agent or tool name (Claude, Codex, Copilot, GPT, ChatGPT, Cursor, etc.)
+anywhere in this repo's git history or GitHub activity — not in commit messages, commit
+trailers (no `Co-Authored-By: <AI name>`), PR titles/bodies, or PR/issue comments. Write
+commits and PRs as if authored by the human driving the session. This applies to every
+agent working in this repo, regardless of that agent's own default commit conventions.
+
 ## Opening a Pull Request
 
 Feature/fix/chore branches always target `dev`:
