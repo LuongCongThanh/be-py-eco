@@ -3,6 +3,12 @@
 Three-tier branching: `main` (production) ← `dev` (integration) ← feature branches.
 `master` is legacy and frozen — do not branch from or merge into it.
 
+> **No CI yet.** `main`/`dev` require a PR to merge, but there is no GitHub Actions
+> workflow enforcing lint/tests — the repo has no Python code yet. Once real code
+> lands, add `.github/workflows/ci.yml` (lint + pytest) and wire it as a required
+> status check on `main` and `dev` branch protection so the PR checklist item
+> "tests passing" is actually verified, not just self-reported.
+
 ## Branch roles
 
 - **`main`** — production/release branch. Default branch on GitHub. Protected: PR required,
