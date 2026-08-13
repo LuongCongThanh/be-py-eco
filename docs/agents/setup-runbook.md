@@ -68,6 +68,12 @@ Create `infra/compose/docker-compose.yml` with a `postgres` service (PostgreSQL
 16) and a named volume. Create `.env.example` (repo root) with `DATABASE_URL`,
 `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`. Copy it to `.env` for local use.
 
+> Port note: if the machine already has a native PostgreSQL Windows service
+> bound to port 5432 (`Get-Service *postgres*`), the Compose container will
+> silently lose that port to it and Django will connect to the wrong server.
+> Map the container to a different host port instead (e.g. `"5433:5432"`)
+> and point `DATABASE_URL` at that port — no need to touch the native service.
+
 ```powershell
 docker compose -f infra/compose/docker-compose.yml up -d postgres
 docker compose -f infra/compose/docker-compose.yml ps

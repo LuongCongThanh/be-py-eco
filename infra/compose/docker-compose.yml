@@ -6,7 +6,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-be_py_eco}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-be_py_eco}
     ports:
-      - "5432:5432"
+      # Host port 5433, not 5432 — this machine already has a native
+      # PostgreSQL Windows service (postgresql-x64-18) bound to 5432.
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
