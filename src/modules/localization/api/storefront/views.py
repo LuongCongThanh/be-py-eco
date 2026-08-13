@@ -17,7 +17,12 @@ class LocaleSuggestionView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
 
-    @extend_schema(request=None, responses=LocaleSuggestionResponseSerializer)
+    @extend_schema(
+        summary="Suggest locale",
+        description="Suggests a locale, country, and currency for the request based on its IP address/headers.",
+        request=None,
+        responses=LocaleSuggestionResponseSerializer,
+    )
     def get(self, request: Request) -> Response:
         suggestion = suggest_locale(request._request)
         data = {

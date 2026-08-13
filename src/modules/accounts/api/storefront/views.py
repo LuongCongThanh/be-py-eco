@@ -58,7 +58,12 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AuthIPRateThrottle, AuthAccountRateThrottle]
 
-    @extend_schema(request=RegisterSerializer, responses={201: CustomerResponseSerializer})
+    @extend_schema(
+        summary="Register a new customer",
+        description="Creates a new customer account and sends an email verification link.",
+        request=RegisterSerializer,
+        responses={201: CustomerResponseSerializer},
+    )
     def post(self, request: Request) -> Response:
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -72,7 +77,12 @@ class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AuthIPRateThrottle]
 
-    @extend_schema(request=VerifyEmailSerializer, responses=CustomerResponseSerializer)
+    @extend_schema(
+        summary="Verify email address",
+        description="Confirms a customer's email using the verification token sent after registration.",
+        request=VerifyEmailSerializer,
+        responses=CustomerResponseSerializer,
+    )
     def post(self, request: Request) -> Response:
         serializer = VerifyEmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -86,7 +96,12 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AuthIPRateThrottle, AuthAccountRateThrottle]
 
-    @extend_schema(request=LoginSerializer, responses=TokenResponseSerializer)
+    @extend_schema(
+        summary="Log in a customer",
+        description="Authenticates a customer with email and password, returning access and refresh tokens.",
+        request=LoginSerializer,
+        responses=TokenResponseSerializer,
+    )
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -100,7 +115,12 @@ class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AuthIPRateThrottle]
 
-    @extend_schema(request=GoogleLoginSerializer, responses=TokenResponseSerializer)
+    @extend_schema(
+        summary="Log in with Google",
+        description="Authenticates a customer using a Google ID token, returning access and refresh tokens.",
+        request=GoogleLoginSerializer,
+        responses=TokenResponseSerializer,
+    )
     def post(self, request: Request) -> Response:
         serializer = GoogleLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -113,7 +133,12 @@ class RefreshTokenView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
 
-    @extend_schema(request=RefreshTokenSerializer, responses=TokenResponseSerializer)
+    @extend_schema(
+        summary="Refresh access token",
+        description="Rotates a refresh token and issues a new access/refresh token pair.",
+        request=RefreshTokenSerializer,
+        responses=TokenResponseSerializer,
+    )
     def post(self, request: Request) -> Response:
         serializer = RefreshTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -127,7 +152,11 @@ class RefreshTokenView(APIView):
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses=CustomerResponseSerializer)
+    @extend_schema(
+        summary="Get current customer",
+        description="Returns the profile of the authenticated customer.",
+        responses=CustomerResponseSerializer,
+    )
     def get(self, request: Request) -> Response:
         data = _customer_representation(cast(Customer, request.user))
         return Response(success_envelope(data, request=request), status=status.HTTP_200_OK)
@@ -136,7 +165,12 @@ class MeView(APIView):
 class UpdateLocalePreferenceView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=UpdateLocalePreferenceSerializer, responses=CustomerResponseSerializer)
+    @extend_schema(
+        summary="Update locale preference",
+        description="Updates the authenticated customer's preferred locale and currency.",
+        request=UpdateLocalePreferenceSerializer,
+        responses=CustomerResponseSerializer,
+    )
     def patch(self, request: Request) -> Response:
         serializer = UpdateLocalePreferenceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -150,7 +184,11 @@ class UpdateLocalePreferenceView(APIView):
 class SessionListView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses=SessionResponseSerializer(many=True))
+    @extend_schema(
+        summary="List active sessions",
+        description="Returns the authenticated customer's active login sessions.",
+        responses=SessionResponseSerializer(many=True),
+    )
     def get(self, request: Request) -> Response:
         customer = cast(Customer, request.user)
         sessions = Session.objects.filter(customer=customer, revoked_at__isnull=True).order_by(
@@ -167,7 +205,12 @@ class SessionListView(APIView):
 class SessionRevokeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=None, responses={204: None})
+    @extend_schema(
+        summary="Revoke a session",
+        description="Revokes a single active session belonging to the authenticated customer.",
+        request=None,
+        responses={204: None},
+    )
     def post(self, request: Request, session_id: UUID) -> Response:
         revoke_session(
             customer=cast(Customer, request.user), session_id=session_id, request=request
@@ -178,7 +221,12 @@ class SessionRevokeView(APIView):
 class SessionRevokeAllView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=None, responses={204: None})
+    @extend_schema(
+        summary="Revoke all sessions",
+        description="Revokes all active sessions belonging to the authenticated customer.",
+        request=None,
+        responses={204: None},
+    )
     def post(self, request: Request) -> Response:
         revoke_all_sessions(customer=cast(Customer, request.user))
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -189,7 +237,12 @@ class RequestPasswordResetView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AuthIPRateThrottle, AuthAccountRateThrottle]
 
-    @extend_schema(request=RequestPasswordResetSerializer, responses={202: None})
+    @extend_schema(
+        summary="Request password reset",
+        description="Sends a password reset token to the customer's email if the account exists.",
+        request=RequestPasswordResetSerializer,
+        responses={202: None},
+    )
     def post(self, request: Request) -> Response:
         serializer = RequestPasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -204,7 +257,12 @@ class ConfirmPasswordResetView(APIView):
     # on, just an opaque token (protects against token brute-forcing).
     throttle_classes = [AuthIPRateThrottle]
 
-    @extend_schema(request=ConfirmPasswordResetSerializer, responses=CustomerResponseSerializer)
+    @extend_schema(
+        summary="Confirm password reset",
+        description="Sets a new password using the reset token and returns the updated customer profile.",
+        request=ConfirmPasswordResetSerializer,
+        responses=CustomerResponseSerializer,
+    )
     def post(self, request: Request) -> Response:
         serializer = ConfirmPasswordResetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -219,7 +277,12 @@ class ConfirmPasswordResetView(APIView):
 class RequestEmailChangeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(request=RequestEmailChangeSerializer, responses={202: None})
+    @extend_schema(
+        summary="Request email change",
+        description="Sends a confirmation link to the new email address for the authenticated customer.",
+        request=RequestEmailChangeSerializer,
+        responses={202: None},
+    )
     def post(self, request: Request) -> Response:
         serializer = RequestEmailChangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -231,7 +294,12 @@ class ConfirmEmailChangeView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
 
-    @extend_schema(request=ConfirmEmailChangeSerializer, responses=CustomerResponseSerializer)
+    @extend_schema(
+        summary="Confirm email change",
+        description="Confirms the pending email change using the token sent to the new address.",
+        request=ConfirmEmailChangeSerializer,
+        responses=CustomerResponseSerializer,
+    )
     def post(self, request: Request) -> Response:
         serializer = ConfirmEmailChangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
