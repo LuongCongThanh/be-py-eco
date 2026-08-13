@@ -61,7 +61,9 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "django_celery_beat",
+    "django_countries",
     "storages",
+    "modules.localization",
 ]
 
 MIDDLEWARE = [
