@@ -71,11 +71,13 @@ def test_verify_email_rejects_expired_token() -> None:
 def test_login_customer_returns_tokens_for_valid_credentials() -> None:
     result = register_customer(email="login@example.com", password="a-strong-password-123")
 
-    customer, refresh = login_customer(email="login@example.com", password="a-strong-password-123")
+    customer, access, refresh = login_customer(
+        email="login@example.com", password="a-strong-password-123"
+    )
 
     assert customer.id == result.customer.id
-    assert str(refresh.access_token)
-    assert str(refresh)
+    assert access
+    assert refresh
 
 
 @pytest.mark.django_db

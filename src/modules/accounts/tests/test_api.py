@@ -80,6 +80,16 @@ def _register(api_client: APIClient, email: str, password: str) -> None:
     assert response.status_code == status.HTTP_201_CREATED
 
 
+def _login(api_client: APIClient, email: str, password: str) -> dict:
+    response = api_client.post(
+        "/api/v1/storefront/accounts/login",
+        {"email": email, "password": password},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_200_OK
+    return response.json()["data"]
+
+
 @pytest.mark.django_db
 def test_login_then_me_returns_the_authenticated_customer(api_client: APIClient) -> None:
     _register(api_client, "loginjourney@example.com", "a-strong-password-123")
@@ -145,3 +155,60 @@ def test_access_token_expires_after_its_configured_lifetime(api_client: APIClien
         )
 
     assert expired.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_token_refresh_rotates_and_rejects_reuse(api_client: APIClient) -> None:
+    _register(api_client, "refreshapi@example.com", "a-strong-password-123")
+    tokens = _login(api_client, "refreshapi@example.com", "a-strong-password-123")
+    old_refresh = tokens["refresh"]
+
+    refresh_response = api_client.post(
+        "/api/v1/storefront/accounts/token/refresh", {"refresh": old_refresh}, format="json"
+    )
+
+    assert refresh_response.status_code == status.HTTP_200_OK
+    new_refresh = refresh_response.json()["data"]["refresh"]
+    assert new_refresh != old_refresh
+
+    reuse_response = api_client.post(
+        "/api/v1/storefront/accounts/token/refresh", {"refresh": old_refresh}, format="json"
+    )
+
+    assert reuse_response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert reuse_response.json()["code"] == "accounts.invalid_refresh_token"
+
+
+@pytest.mark.django_db
+def test_session_list_then_revoke_one(api_client: APIClient) -> None:
+    _register(api_client, "sessapi1@example.com", "a-strong-password-123")
+    tokens = _login(api_client, "sessapi1@example.com", "a-strong-password-123")
+    auth = {"HTTP_AUTHORIZATION": f"Bearer {tokens['access']}"}
+
+    list_response = api_client.get("/api/v1/storefront/accounts/sessions", **auth)
+    assert list_response.status_code == status.HTTP_200_OK
+    sessions = list_response.json()["data"]
+    assert len(sessions) == 1
+    session_id = sessions[0]["id"]
+
+    revoke_response = api_client.post(
+        f"/api/v1/storefront/accounts/sessions/{session_id}/revoke", **auth
+    )
+    assert revoke_response.status_code == status.HTTP_204_NO_CONTENT
+
+    list_after = api_client.get("/api/v1/storefront/accounts/sessions", **auth)
+    assert list_after.json()["data"] == []
+
+
+@pytest.mark.django_db
+def test_revoke_all_sessions(api_client: APIClient) -> None:
+    _register(api_client, "sessapi2@example.com", "a-strong-password-123")
+    _login(api_client, "sessapi2@example.com", "a-strong-password-123")
+    tokens = _login(api_client, "sessapi2@example.com", "a-strong-password-123")
+    auth = {"HTTP_AUTHORIZATION": f"Bearer {tokens['access']}"}
+
+    revoke_all_response = api_client.post("/api/v1/storefront/accounts/sessions/revoke-all", **auth)
+    assert revoke_all_response.status_code == status.HTTP_204_NO_CONTENT
+
+    list_after = api_client.get("/api/v1/storefront/accounts/sessions", **auth)
+    assert list_after.json()["data"] == []

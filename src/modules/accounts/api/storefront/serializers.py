@@ -49,3 +49,15 @@ class TokenResponseSerializer(serializers.Serializer):
 
     access = serializers.CharField()
     refresh = serializers.CharField()
+
+
+class RefreshTokenSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
+class SessionResponseSerializer(serializers.Serializer):
+    """Response shape only — used for OpenAPI docs, not for validation."""
+
+    id = serializers.UUIDField()
+    created_at = serializers.DateTimeField()
+    expires_at = serializers.DateTimeField()

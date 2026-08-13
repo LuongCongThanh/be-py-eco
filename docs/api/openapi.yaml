@@ -70,6 +70,75 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerResponse'
           description: ''
+  /api/v1/storefront/accounts/sessions:
+    get:
+      operationId: storefront_accounts_sessions_list
+      tags:
+      - storefront
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SessionResponse'
+          description: ''
+  /api/v1/storefront/accounts/sessions/{session_id}/revoke:
+    post:
+      operationId: storefront_accounts_sessions_revoke_create
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - storefront
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/storefront/accounts/sessions/revoke-all:
+    post:
+      operationId: storefront_accounts_sessions_revoke_all_create
+      tags:
+      - storefront
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/storefront/accounts/token/refresh:
+    post:
+      operationId: storefront_accounts_token_refresh_create
+      tags:
+      - storefront
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshToken'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RefreshToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RefreshToken'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: ''
   /api/v1/storefront/accounts/verify-email:
     post:
       operationId: storefront_accounts_verify_email_create
@@ -126,6 +195,13 @@ components:
       required:
       - email
       - password
+    RefreshToken:
+      type: object
+      properties:
+        refresh:
+          type: string
+      required:
+      - refresh
     Register:
       type: object
       properties:
@@ -138,6 +214,23 @@ components:
       required:
       - email
       - password
+    SessionResponse:
+      type: object
+      description: Response shape only — used for OpenAPI docs, not for validation.
+      properties:
+        id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - created_at
+      - expires_at
+      - id
     TokenResponse:
       type: object
       description: Response shape only — used for OpenAPI docs, not for validation.
