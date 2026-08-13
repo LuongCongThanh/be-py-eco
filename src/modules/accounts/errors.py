@@ -35,3 +35,9 @@ class SessionNotFoundError(APIException):
     status_code = HTTP_404_NOT_FOUND
     default_detail = "Session not found."
     default_code = "accounts.session_not_found"
+
+
+class InvalidGoogleTokenError(APIException):
+    status_code = HTTP_401_UNAUTHORIZED
+    default_detail = "Invalid or unverifiable Google ID token."
+    default_code = "accounts.invalid_google_token"

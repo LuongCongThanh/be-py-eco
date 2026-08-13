@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from common.api.envelope import success_envelope
 from modules.accounts.api.storefront.serializers import (
     CustomerResponseSerializer,
+    GoogleLoginSerializer,
     LoginSerializer,
     RefreshTokenSerializer,
     RegisterSerializer,
@@ -23,6 +24,7 @@ from modules.accounts.api.storefront.serializers import (
 )
 from modules.accounts.models import Customer, Session
 from modules.accounts.services.login_customer import login_customer
+from modules.accounts.services.login_with_google import login_with_google
 from modules.accounts.services.register_customer import register_customer
 from modules.accounts.services.sessions import (
     revoke_all_sessions,
@@ -75,6 +77,19 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         _, access, refresh = login_customer(**serializer.validated_data)
+        data = {"access": access, "refresh": refresh}
+        return Response(success_envelope(data, request=request), status=status.HTTP_200_OK)
+
+
+class GoogleLoginView(APIView):
+    authentication_classes: list[type[BaseAuthentication]] = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(request=GoogleLoginSerializer, responses=TokenResponseSerializer)
+    def post(self, request: Request) -> Response:
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        _, access, refresh = login_with_google(**serializer.validated_data)
         data = {"access": access, "refresh": refresh}
         return Response(success_envelope(data, request=request), status=status.HTTP_200_OK)
 

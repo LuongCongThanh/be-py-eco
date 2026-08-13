@@ -1,6 +1,5 @@
 """LoginMethod — one way a Customer can authenticate; multiple methods can
-link to the same Customer (guild.md §3.1). Google-specific fields land in
-the commit that adds Google login.
+link to the same Customer (guild.md §3.1).
 """
 
 from __future__ import annotations
@@ -19,12 +18,18 @@ class LoginMethod(BaseModel):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="login_methods")
     provider = models.CharField(max_length=20, choices=Provider.choices)
     password_hash = models.CharField(max_length=255, blank=True)
+    provider_subject_id = models.CharField(max_length=255, blank=True)  # Google's `sub`
 
     class Meta:
         db_table = "accounts_login_method"
         constraints = [
             models.UniqueConstraint(
                 fields=["customer", "provider"], name="unique_customer_login_method_provider"
+            ),
+            models.UniqueConstraint(
+                fields=["provider", "provider_subject_id"],
+                condition=models.Q(provider="google"),
+                name="unique_google_provider_subject_id",
             ),
         ]
 

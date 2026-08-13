@@ -120,6 +120,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@be-py-eco.local")
 
+# integrations/google_oauth — adapter selected via config, per guild.md §7.6.
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
+GOOGLE_OAUTH_CLIENT_CLASS = env(
+    "GOOGLE_OAUTH_CLIENT_CLASS",
+    default="integrations.google_oauth.client.HttpGoogleOAuthClient",
+)
+
 # common/api — envelope + Problem Details error shape (guild.md §5.3/§5.4),
 # established here so every later module reuses it unchanged.
 REST_FRAMEWORK = {

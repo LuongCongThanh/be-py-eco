@@ -61,3 +61,7 @@ class SessionResponseSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     created_at = serializers.DateTimeField()
     expires_at = serializers.DateTimeField()
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    id_token = serializers.CharField()

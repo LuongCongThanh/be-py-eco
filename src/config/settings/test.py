@@ -8,3 +8,4 @@ from .base import *  # noqa: F403
 
 DEBUG = False
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+GOOGLE_OAUTH_CLIENT_CLASS = "integrations.google_oauth.fake.FakeGoogleOAuthClient"

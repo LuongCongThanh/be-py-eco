@@ -1,6 +1,8 @@
 """API test: register -> verify email journey (guild.md §10.2 journey #1,
 partial — login is a later commit)."""
 
+import json
+
 import pytest
 from django.core import mail
 from freezegun import freeze_time
@@ -212,3 +214,30 @@ def test_revoke_all_sessions(api_client: APIClient) -> None:
 
     list_after = api_client.get("/api/v1/storefront/accounts/sessions", **auth)
     assert list_after.json()["data"] == []
+
+
+@pytest.mark.django_db
+def test_google_login_journey(api_client: APIClient) -> None:
+    id_token = json.dumps({"sub": "google-api-1", "email": "googleapi@example.com"})
+
+    response = api_client.post(
+        "/api/v1/storefront/accounts/login/google", {"id_token": id_token}, format="json"
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    access = response.json()["data"]["access"]
+
+    me_response = api_client.get(
+        "/api/v1/storefront/accounts/me", HTTP_AUTHORIZATION=f"Bearer {access}"
+    )
+    assert me_response.json()["data"]["email"] == "googleapi@example.com"
+
+
+@pytest.mark.django_db
+def test_google_login_rejects_invalid_id_token(api_client: APIClient) -> None:
+    response = api_client.post(
+        "/api/v1/storefront/accounts/login/google", {"id_token": "garbage"}, format="json"
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.json()["code"] == "accounts.invalid_google_token"
