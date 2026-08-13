@@ -1,11 +1,15 @@
 from django.urls import path
 
 from modules.accounts.api.storefront.views import (
+    ConfirmEmailChangeView,
+    ConfirmPasswordResetView,
     GoogleLoginView,
     LoginView,
     MeView,
     RefreshTokenView,
     RegisterView,
+    RequestEmailChangeView,
+    RequestPasswordResetView,
     SessionListView,
     SessionRevokeAllView,
     SessionRevokeView,
@@ -27,5 +31,25 @@ urlpatterns = [
     ),
     path(
         "sessions/revoke-all", SessionRevokeAllView.as_view(), name="accounts-sessions-revoke-all"
+    ),
+    path(
+        "password-reset/request",
+        RequestPasswordResetView.as_view(),
+        name="accounts-password-reset-request",
+    ),
+    path(
+        "password-reset/confirm",
+        ConfirmPasswordResetView.as_view(),
+        name="accounts-password-reset-confirm",
+    ),
+    path(
+        "email-change/request",
+        RequestEmailChangeView.as_view(),
+        name="accounts-email-change-request",
+    ),
+    path(
+        "email-change/confirm",
+        ConfirmEmailChangeView.as_view(),
+        name="accounts-email-change-confirm",
     ),
 ]

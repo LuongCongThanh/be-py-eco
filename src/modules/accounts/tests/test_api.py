@@ -241,3 +241,64 @@ def test_google_login_rejects_invalid_id_token(api_client: APIClient) -> None:
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json()["code"] == "accounts.invalid_google_token"
+
+
+@pytest.mark.django_db
+def test_password_reset_journey(api_client: APIClient) -> None:
+    _register(api_client, "resetapi@example.com", "a-strong-password-123")
+
+    request_response = api_client.post(
+        "/api/v1/storefront/accounts/password-reset/request",
+        {"email": "resetapi@example.com"},
+        format="json",
+    )
+    assert request_response.status_code == status.HTTP_202_ACCEPTED
+
+    raw_token = mail.outbox[-1].body.rsplit(": ", 1)[-1].strip()
+    confirm_response = api_client.post(
+        "/api/v1/storefront/accounts/password-reset/confirm",
+        {"token": raw_token, "new_password": "brand-new-password-789"},
+        format="json",
+    )
+    assert confirm_response.status_code == status.HTTP_200_OK
+
+    login_response = api_client.post(
+        "/api/v1/storefront/accounts/login",
+        {"email": "resetapi@example.com", "password": "brand-new-password-789"},
+        format="json",
+    )
+    assert login_response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+def test_email_change_journey(api_client: APIClient) -> None:
+    _register(api_client, "changeold@example.com", "a-strong-password-123")
+    tokens = _login(api_client, "changeold@example.com", "a-strong-password-123")
+    auth = {"HTTP_AUTHORIZATION": f"Bearer {tokens['access']}"}
+
+    request_response = api_client.post(
+        "/api/v1/storefront/accounts/email-change/request",
+        {"new_email": "changenew@example.com"},
+        format="json",
+        **auth,
+    )
+    assert request_response.status_code == status.HTTP_202_ACCEPTED
+
+    raw_token = mail.outbox[-1].body.rsplit(": ", 1)[-1].strip()
+    confirm_response = api_client.post(
+        "/api/v1/storefront/accounts/email-change/confirm", {"token": raw_token}, format="json"
+    )
+
+    assert confirm_response.status_code == status.HTTP_200_OK
+    assert confirm_response.json()["data"]["email"] == "changenew@example.com"
+
+
+@pytest.mark.django_db
+def test_email_change_request_requires_authentication(api_client: APIClient) -> None:
+    response = api_client.post(
+        "/api/v1/storefront/accounts/email-change/request",
+        {"new_email": "whatever@example.com"},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED

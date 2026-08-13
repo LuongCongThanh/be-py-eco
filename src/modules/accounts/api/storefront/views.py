@@ -13,18 +13,24 @@ from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
 from modules.accounts.api.storefront.serializers import (
+    ConfirmEmailChangeSerializer,
+    ConfirmPasswordResetSerializer,
     CustomerResponseSerializer,
     GoogleLoginSerializer,
     LoginSerializer,
     RefreshTokenSerializer,
     RegisterSerializer,
+    RequestEmailChangeSerializer,
+    RequestPasswordResetSerializer,
     SessionResponseSerializer,
     TokenResponseSerializer,
     VerifyEmailSerializer,
 )
 from modules.accounts.models import Customer, Session
+from modules.accounts.services.email_change import confirm_email_change, request_email_change
 from modules.accounts.services.login_customer import login_customer
 from modules.accounts.services.login_with_google import login_with_google
+from modules.accounts.services.password_reset import confirm_password_reset, request_password_reset
 from modules.accounts.services.register_customer import register_customer
 from modules.accounts.services.sessions import (
     revoke_all_sessions,
@@ -151,3 +157,55 @@ class SessionRevokeAllView(APIView):
     def post(self, request: Request) -> Response:
         revoke_all_sessions(customer=cast(Customer, request.user))
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RequestPasswordResetView(APIView):
+    authentication_classes: list[type[BaseAuthentication]] = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(request=RequestPasswordResetSerializer, responses={202: None})
+    def post(self, request: Request) -> Response:
+        serializer = RequestPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request_password_reset(**serializer.validated_data)
+        return Response(status=status.HTTP_202_ACCEPTED)
+
+
+class ConfirmPasswordResetView(APIView):
+    authentication_classes: list[type[BaseAuthentication]] = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(request=ConfirmPasswordResetSerializer, responses=CustomerResponseSerializer)
+    def post(self, request: Request) -> Response:
+        serializer = ConfirmPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        customer = confirm_password_reset(
+            raw_token=serializer.validated_data["token"],
+            new_password=serializer.validated_data["new_password"],
+        )
+        data = _customer_representation(customer)
+        return Response(success_envelope(data, request=request), status=status.HTTP_200_OK)
+
+
+class RequestEmailChangeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=RequestEmailChangeSerializer, responses={202: None})
+    def post(self, request: Request) -> Response:
+        serializer = RequestEmailChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request_email_change(customer=cast(Customer, request.user), **serializer.validated_data)
+        return Response(status=status.HTTP_202_ACCEPTED)
+
+
+class ConfirmEmailChangeView(APIView):
+    authentication_classes: list[type[BaseAuthentication]] = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(request=ConfirmEmailChangeSerializer, responses=CustomerResponseSerializer)
+    def post(self, request: Request) -> Response:
+        serializer = ConfirmEmailChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        customer = confirm_email_change(raw_token=serializer.validated_data["token"])
+        data = _customer_representation(customer)
+        return Response(success_envelope(data, request=request), status=status.HTTP_200_OK)

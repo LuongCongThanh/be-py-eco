@@ -65,3 +65,27 @@ class SessionResponseSerializer(serializers.Serializer):
 
 class GoogleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField()
+
+
+class RequestPasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class ConfirmPasswordResetSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate_new_password(self, value: str) -> str:
+        try:
+            validate_password(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages) from exc
+        return value
+
+
+class RequestEmailChangeSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+
+
+class ConfirmEmailChangeSerializer(serializers.Serializer):
+    token = serializers.CharField()

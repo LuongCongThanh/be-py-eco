@@ -10,6 +10,7 @@ from rest_framework.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
+    HTTP_409_CONFLICT,
 )
 
 
@@ -41,3 +42,9 @@ class InvalidGoogleTokenError(APIException):
     status_code = HTTP_401_UNAUTHORIZED
     default_detail = "Invalid or unverifiable Google ID token."
     default_code = "accounts.invalid_google_token"
+
+
+class EmailAlreadyTakenError(APIException):
+    status_code = HTTP_409_CONFLICT
+    default_detail = "This email is already used by another account."
+    default_code = "accounts.email_already_taken"
