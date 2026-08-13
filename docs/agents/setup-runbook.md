@@ -223,7 +223,9 @@ Empty for now — the `/api/v1/...` namespace and `/health/*` endpoints land
 in Slice 1 (see Issue #5's "Explicit non-decisions" section).
 """
 
-urlpatterns = []
+from django.urls import URLPattern, URLResolver
+
+urlpatterns: list[URLPattern | URLResolver] = []
 '@ | Set-Content -Path src/config/urls.py -Encoding utf8
 ```
 
@@ -1113,10 +1115,37 @@ New-Item -ItemType Directory -Force -Path .github/workflows | Out-Null
 Create `.github/workflows/ci.yml` — checkout → set up `uv` → `uv sync` →
 `uv lock --check` → `manage.py check --database default` (against a Postgres
 service container) → `pytest` (against Postgres + Redis + RabbitMQ +
-OpenSearch + MinIO service containers) → `ruff check`/`format --check` →
+OpenSearch service containers, plus MinIO) → `ruff check`/`format --check` →
 `mypy`. See the committed file for the full service-container definitions
 (too long to usefully retype here — copy it from the repo rather than
 hand-typing five services' worth of health-check config).
+
+> **MinIO is not a `services:` entry.** GitHub Actions service containers
+> can't be given a custom command, but the official `minio/minio` image
+> needs one (`server /data`) to actually start serving — there's no
+> equivalent to Compose's `command:` field here. (An earlier version of
+> this workflow used `bitnami/minio:latest`, which bakes the server command
+> in as its default `CMD`; Bitnami has since retired its free-tier Docker
+> Hub images, so that tag no longer resolves.) Instead, start it as a plain
+> step before the rest of the job, with a short poll loop against its health
+> endpoint:
+>
+> ```yaml
+> - name: Start MinIO
+>   run: |
+>     docker run -d --name minio \
+>       -p 9000:9000 \
+>       -e MINIO_ROOT_USER=minioadmin \
+>       -e MINIO_ROOT_PASSWORD=minioadmin \
+>       minio/minio:latest server /data
+>     for i in $(seq 1 30); do
+>       curl -sf http://localhost:9000/minio/health/live && exit 0
+>       sleep 2
+>     done
+>     echo "MinIO did not become healthy in time" >&2
+>     docker logs minio
+>     exit 1
+> ```
 
 ```powershell
 uv run python -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml')); print('yaml ok')"
@@ -1134,18 +1163,25 @@ GitHub Actions.
 ```powershell
 uv run python -m pip_audit
 uv run python -m bandit -r src
-uv run python -m detect_secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' > .secrets.baseline
+uv run python -m detect_secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' --exclude-files '\.secrets\.baseline' > .secrets.baseline
 ```
 
 `--exclude-files` skips the vendored `.agents`/`.claude` skill docs (same
-reason as the ruff exclude in Step 7). If any findings remain (e.g. the
-dev-only placeholder credentials in `.env.example`/`ci.yml`), open
-`.secrets.baseline` and mark each as `"is_secret": false` — that's the
-non-interactive equivalent of running `detect-secrets audit .secrets.baseline`
-and pressing "n" for each one.
+reason as the ruff exclude in Step 7), and skips `.secrets.baseline` itself
+so its own hashed-secret strings never show up as findings against itself.
+If any findings remain (e.g. the dev-only placeholder credentials in
+`.env.example`/`ci.yml`), open `.secrets.baseline` and mark each as
+`"is_secret": false` — that's the non-interactive equivalent of running
+`detect-secrets audit .secrets.baseline` and pressing "n" for each one.
 
 Add matching `pip-audit`/`bandit`/`detect-secrets` steps to `ci.yml` (see the
-committed file).
+committed file), including the same two `--exclude-files` flags — CI's
+compare step diffs `.secrets.baseline` against a fresh scan by filename, so
+the exclude flags must match exactly between the local baseline generation
+and CI, and the baseline's filenames need forward slashes even if you
+generated it on Windows (`detect-secrets` on Linux always emits forward
+slashes, so a Windows-generated baseline with `\`-separated keys makes every
+already-audited file look like a brand-new finding in CI).
 
 **Check**: no unaddressed high-severity finding; CI stays green after pushing.
 

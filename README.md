@@ -115,8 +115,11 @@ this skeleton was built, step by step, with copy-pasteable commands.
 
 `.github/workflows/ci.yml` runs on every PR and push to `main`/`dev`:
 lockfile check → DB connectivity check → full test suite (against real
-Postgres/Redis/RabbitMQ/OpenSearch/MinIO service containers) → ruff →
-mypy → pip-audit → bandit → detect-secrets → container build.
+Postgres/Redis/RabbitMQ/OpenSearch service containers, plus MinIO started
+via a manual `docker run` step — GitHub Actions service containers can't
+pass MinIO the `server /data` command it needs, and Bitnami's drop-in image
+was retired from Docker Hub) → ruff → mypy → pip-audit → bandit →
+detect-secrets → container build.
 
 ## Contributing
 
