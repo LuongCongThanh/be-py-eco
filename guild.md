@@ -70,19 +70,19 @@ Repository không chứa:
 
 ### 2.5 Ma trận quyền cơ sở
 
-| Chức năng | Master Admin | Store Manager | Order Staff |
-|---|:---:|:---:|:---:|
-| Staff và role | Quản lý | Không | Không |
-| Provider/security | Quản lý | Không | Không |
-| Country/currency/tax | Quản lý | Xem | Không |
-| Catalog/translation/media | Quản lý | Quản lý | Xem |
-| Giá/Promotion/Gift Card | Quản lý | Quản lý | Xem |
-| Inventory/Warehouse | Quản lý | Quản lý | Xem |
-| Order/Shipment | Quản lý | Quản lý | Xử lý |
-| Refund/Return | Quản lý | Duyệt | Xử lý |
-| Review moderation | Quản lý | Quản lý | Không |
-| Analytics | Toàn bộ | Toàn bộ | Giới hạn |
-| Audit Log | Toàn bộ | Chỉ xem | Thao tác của mình |
+| Chức năng                 | Master Admin | Store Manager |    Order Staff    |
+|---------------------------|:------------:|:-------------:|:-----------------:|
+| Staff và role             |   Quản lý    |     Không     |       Không       |
+| Provider/security         |   Quản lý    |     Không     |       Không       |
+| Country/currency/tax      |   Quản lý    |      Xem      |       Không       |
+| Catalog/translation/media |   Quản lý    |    Quản lý    |        Xem        |
+| Giá/Promotion/Gift Card   |   Quản lý    |    Quản lý    |        Xem        |
+| Inventory/Warehouse       |   Quản lý    |    Quản lý    |        Xem        |
+| Order/Shipment            |   Quản lý    |    Quản lý    |       Xử lý       |
+| Refund/Return             |   Quản lý    |     Duyệt     |       Xử lý       |
+| Review moderation         |   Quản lý    |    Quản lý    |       Không       |
+| Analytics                 |   Toàn bộ    |    Toàn bộ    |     Giới hạn      |
+| Audit Log                 |   Toàn bộ    |    Chỉ xem    | Thao tác của mình |
 
 Role là lớp quyền ban đầu. Mọi action còn phải kiểm tra permission codename và object-level policy trong application service. Không rải `if user.role == ...` trong view.
 
@@ -604,25 +604,24 @@ Mục tiêu chính của việc chia module là cấu trúc folder dễ hiểu:
 
 ```text
 be-py-eco/
-|-- backend/
-|   |-- pyproject.toml
-|   |-- uv.lock
-|   |-- manage.py
-|   |-- src/
-|   |   |-- config/
-|   |   |   |-- settings/
-|   |   |   |   |-- base.py
-|   |   |   |   |-- local.py
-|   |   |   |   |-- test.py
-|   |   |   |   `-- production.py
-|   |   |   |-- urls.py
-|   |   |   |-- celery.py
-|   |   |   |-- asgi.py
-|   |   |   `-- wsgi.py
-|   |   |-- modules/
-|   |   |-- integrations/
-|   |   `-- common/
-|   `-- tests/
+|-- pyproject.toml
+|-- uv.lock
+|-- manage.py
+|-- src/
+|   |-- config/
+|   |   |-- settings/
+|   |   |   |-- base.py
+|   |   |   |-- local.py
+|   |   |   |-- test.py
+|   |   |   `-- production.py
+|   |   |-- urls.py
+|   |   |-- celery.py
+|   |   |-- asgi.py
+|   |   `-- wsgi.py
+|   |-- modules/
+|   |-- integrations/
+|   `-- common/
+|-- tests/
 |-- infra/
 |   |-- docker/
 |   `-- compose/
@@ -638,12 +637,18 @@ be-py-eco/
 `-- README.md
 ```
 
+> Slice 0 (Issue #5) installed the Django project directly at the repo root
+> rather than nesting it under a `backend/` subfolder — this repo is
+> single-purpose (no separate frontend workspace to keep `backend/`
+> distinct from), so the extra nesting level didn't earn its keep. See
+> `docs/agents/setup-runbook.md` for the exact commands.
+
 ### 7.3 Khuôn Django module
 
 Ví dụ module `catalog` khi đã đủ lớn:
 
 ```text
-backend/src/modules/catalog/
+src/modules/catalog/
 |-- __init__.py
 |-- apps.py
 |-- models/
@@ -690,31 +695,31 @@ Module nhỏ có thể bắt đầu bằng `models.py`, `services.py`, `selector
 
 ### 7.4 Danh sách module
 
-| Module | Trách nhiệm |
-|---|---|
-| `accounts` | Customer/staff, profile, address, auth, MFA, session, consent |
-| `localization` | Supported Country, locale, currency và cấu hình khả dụng |
-| `catalog` | Category, Brand, Product, Variant, Attribute, Translation |
-| `pricing` | Base Price, Exchange Rate, conversion và rounding |
-| `search` | OpenSearch projection, indexing và product discovery |
-| `inventory` | Warehouse, stock, Reservation và Inventory Movement |
-| `carts` | Active Cart và Cart Line |
-| `checkout` | Phối hợp validation, quote, reservation và tạo Order |
-| `orders` | Order, Order Line, snapshot và lifecycle |
-| `payments` | COD, Payment Attempt, webhook, capture và Refund |
-| `shipping` | Shipping Method, quote, Shipment và tracking |
-| `taxes` | Tax rule/provider, quote và snapshot |
-| `promotions` | Promotion, Coupon, condition, benefit và redemption |
-| `wishlists` | Wishlist của Customer |
-| `reviews` | Verified Review, moderation và aggregate rating |
-| `recommendations` | Rule-based recommendation và event input |
-| `gift_cards` | Gift Card, balance reservation và Ledger |
-| `returns` | Return Request, inspection và replacement workflow |
-| `notifications` | Email template, locale và delivery deduplication |
-| `analytics` | Operational metrics và behavioral event |
-| `media` | Presigned upload, quarantine và derivative processing |
-| `outbox` | Transactional event persistence và dispatch |
-| `audit` | Immutable staff/customer sensitive-action history |
+| Module            | Trách nhiệm                                                   |
+|-------------------|---------------------------------------------------------------|
+| `accounts`        | Customer/staff, profile, address, auth, MFA, session, consent |
+| `localization`    | Supported Country, locale, currency và cấu hình khả dụng      |
+| `catalog`         | Category, Brand, Product, Variant, Attribute, Translation     |
+| `pricing`         | Base Price, Exchange Rate, conversion và rounding             |
+| `search`          | OpenSearch projection, indexing và product discovery          |
+| `inventory`       | Warehouse, stock, Reservation và Inventory Movement           |
+| `carts`           | Active Cart và Cart Line                                      |
+| `checkout`        | Phối hợp validation, quote, reservation và tạo Order          |
+| `orders`          | Order, Order Line, snapshot và lifecycle                      |
+| `payments`        | COD, Payment Attempt, webhook, capture và Refund              |
+| `shipping`        | Shipping Method, quote, Shipment và tracking                  |
+| `taxes`           | Tax rule/provider, quote và snapshot                          |
+| `promotions`      | Promotion, Coupon, condition, benefit và redemption           |
+| `wishlists`       | Wishlist của Customer                                         |
+| `reviews`         | Verified Review, moderation và aggregate rating               |
+| `recommendations` | Rule-based recommendation và event input                      |
+| `gift_cards`      | Gift Card, balance reservation và Ledger                      |
+| `returns`         | Return Request, inspection và replacement workflow            |
+| `notifications`   | Email template, locale và delivery deduplication              |
+| `analytics`       | Operational metrics và behavioral event                       |
+| `media`           | Presigned upload, quarantine và derivative processing         |
+| `outbox`          | Transactional event persistence và dispatch                   |
+| `audit`           | Immutable staff/customer sensitive-action history             |
 
 `checkout` điều phối use case nhưng không trở thành nơi chứa toàn bộ dữ liệu. State lâu dài nằm tại module sở hữu như `orders`, `inventory`, `payments` và `shipping`.
 
@@ -761,83 +766,83 @@ Phiên bản dưới đây là stable baseline đã kiểm tra ngày 2026-08-12.
 
 ### 8.1 Core API
 
-| Package | Baseline | Công dụng |
-|---|---:|---|
-| Python | 3.13.x | Runtime cân bằng độ mới và ecosystem compatibility |
-| Django | 5.2.17 LTS | ORM, migration, transaction, security và application framework |
-| djangorestframework | 3.18.0 | REST API, serializer, permission và throttling |
-| psycopg | 3.3.4 | PostgreSQL driver/connection pool |
-| django-environ | 0.14.0 | Environment-based configuration |
-| django-filter | 26.1 | Whitelisted API filtering |
-| drf-spectacular | 0.30.0 | OpenAPI 3.1 generation |
-| drf-standardized-errors | 0.16.0 | Standard error responses |
-| django-cors-headers | 4.9.0 | CORS cho Storefront/Admin CMS |
+| Package                 |   Baseline | Công dụng                                                      |
+|-------------------------|-----------:|----------------------------------------------------------------|
+| Python                  |     3.13.x | Runtime cân bằng độ mới và ecosystem compatibility             |
+| Django                  | 5.2.17 LTS | ORM, migration, transaction, security và application framework |
+| djangorestframework     |     3.18.0 | REST API, serializer, permission và throttling                 |
+| psycopg                 |      3.3.4 | PostgreSQL driver/connection pool                              |
+| django-environ          |     0.14.0 | Environment-based configuration                                |
+| django-filter           |       26.1 | Whitelisted API filtering                                      |
+| drf-spectacular         |     0.30.0 | OpenAPI 3.1 generation                                         |
+| drf-standardized-errors |     0.16.0 | Standard error responses                                       |
+| django-cors-headers     |      4.9.0 | CORS cho Storefront/Admin CMS                                  |
 
 ### 8.2 Auth và security
 
-| Package | Baseline | Công dụng |
-|---|---:|---|
-| djangorestframework-simplejwt | 5.5.1 | JWT access/refresh và rotation |
-| django-allauth | 65.19.0 | Email verification và Google login |
-| django-otp | 1.7.0 | TOTP/MFA cho staff |
-| django-axes | 8.3.1 | Brute-force protection |
-| argon2-cffi | 25.1.0 | Argon2 password hashing |
-| cryptography | 50.0.0 | Cryptographic primitives |
-| django-countries | 9.0.0 | Country codes/fields |
-| phonenumberslite | 9.0.36 | International phone normalization |
+| Package                       | Baseline | Công dụng                          |
+|-------------------------------|---------:|------------------------------------|
+| djangorestframework-simplejwt |    5.5.1 | JWT access/refresh và rotation     |
+| django-allauth                |  65.19.0 | Email verification và Google login |
+| django-otp                    |    1.7.0 | TOTP/MFA cho staff                 |
+| django-axes                   |    8.3.1 | Brute-force protection             |
+| argon2-cffi                   |   25.1.0 | Argon2 password hashing            |
+| cryptography                  |   50.0.0 | Cryptographic primitives           |
+| django-countries              |    9.0.0 | Country codes/fields               |
+| phonenumberslite              |   9.0.36 | International phone normalization  |
 
 ### 8.3 Background và provider
 
-| Package | Baseline | Công dụng |
-|---|---:|---|
-| celery | 5.6.3 | Background task execution |
-| django-celery-beat | 2.9.0 | Periodic schedules |
-| redis | 8.1.0 | Redis cache/rate-limit client |
-| opensearch-py | 3.2.0 | OpenSearch index/query client |
-| httpx | 0.28.1 | External HTTP provider calls |
-| tenacity | 9.1.4 | Bounded retry với backoff/jitter |
+| Package            | Baseline | Công dụng                        |
+|--------------------|---------:|----------------------------------|
+| celery             |    5.6.3 | Background task execution        |
+| django-celery-beat |    2.9.0 | Periodic schedules               |
+| redis              |    8.1.0 | Redis cache/rate-limit client    |
+| opensearch-py      |    3.2.0 | OpenSearch index/query client    |
+| httpx              |   0.28.1 | External HTTP provider calls     |
+| tenacity           |    9.1.4 | Bounded retry với backoff/jitter |
 
 ### 8.4 Media
 
-| Package | Baseline | Công dụng |
-|---|---:|---|
-| django-storages | 1.14.6 | Django storage backend |
-| boto3 | 1.43.69 | S3 API và presigned credential |
-| Pillow | 12.3.0 | Decode, resize, metadata removal và derivative |
-| filetype | 1.2.0 | Magic-byte file detection |
-| ClamAV | Managed system service | Malware scanning qua internal adapter |
+| Package         |               Baseline | Công dụng                                      |
+|-----------------|-----------------------:|------------------------------------------------|
+| django-storages |                 1.14.6 | Django storage backend                         |
+| boto3           |                1.43.69 | S3 API và presigned credential                 |
+| Pillow          |                 12.3.0 | Decode, resize, metadata removal và derivative |
+| filetype        |                  1.2.0 | Magic-byte file detection                      |
+| ClamAV          | Managed system service | Malware scanning qua internal adapter          |
 
 ### 8.5 Observability
 
-| Package | Baseline | Công dụng |
-|---|---:|---|
-| structlog | 26.1.0 | Structured JSON logging |
-| sentry-sdk | 2.67.1 | Error reporting và tracing |
-| prometheus-client | 0.26.0 | Technical/business metrics export |
+| Package           | Baseline | Công dụng                         |
+|-------------------|---------:|-----------------------------------|
+| structlog         |   26.1.0 | Structured JSON logging           |
+| sentry-sdk        |   2.67.1 | Error reporting và tracing        |
+| prometheus-client |   0.26.0 | Technical/business metrics export |
 
 ### 8.6 Testing
 
-| Package | Baseline | Công dụng |
-|---|---:|---|
-| pytest | 9.1.1 | Test runner |
-| pytest-django | 4.14.0 | Django/PostgreSQL test integration |
-| pytest-cov | 7.1.0 | Coverage reporting |
-| factory-boy | 3.3.3 | Minimal test factories |
-| hypothesis | 6.165.3 | Property-based invariant tests |
-| freezegun | 1.5.5 | Time boundary tests |
-| respx | 0.23.1 | Mock HTTP provider contract |
+| Package       | Baseline | Công dụng                          |
+|---------------|---------:|------------------------------------|
+| pytest        |    9.1.1 | Test runner                        |
+| pytest-django |   4.14.0 | Django/PostgreSQL test integration |
+| pytest-cov    |    7.1.0 | Coverage reporting                 |
+| factory-boy   |    3.3.3 | Minimal test factories             |
+| hypothesis    |  6.165.3 | Property-based invariant tests     |
+| freezegun     |    1.5.5 | Time boundary tests                |
+| respx         |   0.23.1 | Mock HTTP provider contract        |
 
 ### 8.7 Development và supply-chain quality
 
-| Package/tool | Baseline | Công dụng |
-|---|---:|---|
-| uv | Latest pinned toolchain | Dependency, environment và lockfile |
-| ruff | 0.16.2 | Lint và format |
-| mypy | 2.3.0 | Stable static type checking |
-| django-stubs | 6.0.9 | Django ORM type support |
-| pip-audit | 2.10.1 | Dependency vulnerability scan |
-| bandit | 1.9.4 | Python security static analysis |
-| detect-secrets | 1.5.0 | Secret scanning |
+| Package/tool   |                Baseline | Công dụng                           |
+|----------------|------------------------:|-------------------------------------|
+| uv             | Latest pinned toolchain | Dependency, environment và lockfile |
+| ruff           |                  0.16.2 | Lint và format                      |
+| mypy           |                   2.3.0 | Stable static type checking         |
+| django-stubs   |                   6.0.9 | Django ORM type support             |
+| pip-audit      |                  2.10.1 | Dependency vulnerability scan       |
+| bandit         |                   1.9.4 | Python security static analysis     |
+| detect-secrets |                   1.5.0 | Secret scanning                     |
 
 Không dùng thư viện generic để thay thế các rule cốt lõi: Money calculation, Inventory Reservation, transactional outbox, idempotency, Promotion engine và Order state machine được project tự sở hữu và kiểm thử.
 

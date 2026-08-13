@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+env:
+  DJANGO_SETTINGS_MODULE: config.settings.test
+  DATABASE_URL: psql://be_py_eco:be_py_eco@localhost:5432/be_py_eco
+  REDIS_URL: redis://localhost:6379/0
+  CELERY_BROKER_URL: amqp://guest:guest@localhost:5672//
+  OPENSEARCH_URL: http://localhost:9200
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minioadmin
+  AWS_STORAGE_BUCKET_NAME: be-py-eco-ci
+  AWS_S3_ENDPOINT_URL: http://localhost:9000
+  SECRET_KEY: ci-only-secret-key
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: be_py_eco
+          POSTGRES_USER: be_py_eco
+          POSTGRES_PASSWORD: be_py_eco
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U be_py_eco"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports: ["5672:5672"]
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      opensearch:
+        image: opensearchproject/opensearch:2
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -sf http://localhost:9200 || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start MinIO
+        # Service containers can't pass a custom command, and the official
+        # minio/minio image requires one (`server /data`) to start serving —
+        # bitnami/minio used to bake that in but its Docker Hub images were
+        # retired, so MinIO is started directly instead of via `services:`.
+        run: |
+          docker run -d --name minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/live && exit 0
+            sleep 2
+          done
+          echo "MinIO did not become healthy in time" >&2
+          docker logs minio
+          exit 1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Check lockfile is up to date
+        run: uv lock --check
+
+      - name: Django database connectivity check
+        run: uv run python manage.py check --database default
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Lint (ruff check)
+        run: uv run ruff check src tests manage.py
+
+      - name: Lint (ruff format --check)
+        run: uv run ruff format --check src tests manage.py
+
+      - name: Type check (mypy)
+        run: uv run mypy src
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: uv run pip-audit
+
+      - name: Static security scan (bandit)
+        run: uv run bandit -r src
+
+      - name: Secret scan (detect-secrets)
+        run: |
+          uv run detect-secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' --exclude-files '\.secrets\.baseline' > /tmp/secrets-scan.json
+          uv run python -c "
+          import json, sys
+          baseline = json.load(open('.secrets.baseline'))['results']
+          current = json.load(open('/tmp/secrets-scan.json'))['results']
+          new_files = set(current) - set(baseline)
+          if new_files:
+              print('New unaudited secret findings in:', new_files)
+              sys.exit(1)
+          print('No new unaudited secret findings.')
+          "
+
+      - name: Build container image
+        run: docker build -f infra/docker/Dockerfile -t be-py-eco:ci .
