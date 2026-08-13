@@ -52,3 +52,8 @@ dev = [
     "respx==0.23.1",
     "ruff==0.16.2",
 ]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+pythonpath = ["src"]
+

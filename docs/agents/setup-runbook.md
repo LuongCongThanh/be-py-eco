@@ -10,6 +10,12 @@ Note: unlike Issue #5's original layout (which nests everything under a
 the repo root** — `./pyproject.toml`, `./src/config/...`, `./manage.py`,
 `./tests/...`, no `backend/` prefix anywhere.
 
+Note: on this machine, a Windows Application Control (WDAC/AppLocker-style)
+policy blocks spawning `pytest.exe`/`mypy.exe` directly — use `uv run python
+-m pytest` (works) instead of `uv run pytest`. `mypy` is blocked even via
+`python -m mypy` (its compiled extension DLL is blocked too); if that's also
+the case for you, treat `mypy` as CI-only until IT allowlists it locally.
+
 How to use this document:
 
 - Work through the steps in order — each one assumes the previous steps are done.
@@ -159,7 +165,7 @@ Add `[tool.pytest.ini_options]` to `pyproject.toml`
 `tests/test_environment.py` with a DB connectivity smoke test.
 
 ```powershell
-uv run pytest
+uv run python -m pytest
 ```
 
 **Check**: test suite passes, and `pytest-django` created/used a real
@@ -197,7 +203,7 @@ Add `[tool.mypy]` + `django-stubs` plugin, `DJANGO_SETTINGS_MODULE` pointed at
 `config.settings.test`.
 
 ```powershell
-uv run mypy src
+uv run python -m mypy src
 ```
 
 **Check**: exits clean, no type errors on the current skeleton.
@@ -216,7 +222,7 @@ Implement `common/ids` (UUIDv7 generator) with a unit test. Wire `structlog`
 JSON logging into `LOGGING` in `base.py`.
 
 ```powershell
-uv run pytest
+uv run python -m pytest
 $env:DJANGO_SETTINGS_MODULE = "config.settings.local"
 uv run python manage.py check
 ```
@@ -238,7 +244,7 @@ Add a smoke test opening a `redis.Redis.from_url(...)` connection and calling `.
 
 ```powershell
 docker compose -f infra/compose/docker-compose.yml up -d redis
-uv run pytest tests/ -k redis
+uv run python -m pytest tests/ -k redis
 ```
 
 **Check**: smoke test passes against the Compose Redis container.
@@ -271,7 +277,7 @@ uv run celery -A config worker --loglevel=info
 Back in the original window:
 
 ```powershell
-uv run pytest tests/ -k celery
+uv run python -m pytest tests/ -k celery
 ```
 
 **Check**: the worker window shows a successful connection to RabbitMQ; the
@@ -292,7 +298,7 @@ calling `.info()`/`.ping()`.
 
 ```powershell
 docker compose -f infra/compose/docker-compose.yml up -d opensearch
-uv run pytest tests/ -k opensearch
+uv run python -m pytest tests/ -k opensearch
 ```
 
 **Check**: smoke test passes against the Compose OpenSearch container.
@@ -312,7 +318,7 @@ back, and deletes a small object.
 
 ```powershell
 docker compose -f infra/compose/docker-compose.yml up -d minio
-uv run pytest tests/ -k storage
+uv run python -m pytest tests/ -k storage
 ```
 
 **Check**: smoke test passes against the Compose MinIO container.
@@ -327,7 +333,7 @@ git commit -m "chore: add MinIO and django-storages S3 backend"
 ## Step 14 — Add the GitHub Actions CI workflow
 
 Add `.github/workflows/ci.yml`: checkout → set up `uv` → `uv sync` → Postgres
-service container → `uv run pytest` → `ruff check`/`format --check` → `mypy` →
+service container → `uv run python -m pytest` → `ruff check`/`format --check` → `mypy` →
 `uv lock --check`.
 
 ```powershell
@@ -381,7 +387,7 @@ git commit -m "chore: add container build"
 ## Step 17 — Document local setup
 
 Add a "Getting started" section to the repo `README.md`: `docker compose up`,
-`uv sync`, `manage.py migrate`, `uv run pytest` — the exact commands verified above.
+`uv sync`, `manage.py migrate`, `uv run python -m pytest` — the exact commands verified above.
 
 **Check**: following the README from a fresh clone requires no undocumented step.
 
