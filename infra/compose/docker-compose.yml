@@ -1,4 +1,20 @@
 services:
+  opensearch:
+    image: opensearchproject/opensearch:2
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -46,3 +62,4 @@ volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
+  opensearch_data:
