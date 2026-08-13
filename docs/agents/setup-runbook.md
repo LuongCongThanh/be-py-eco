@@ -109,6 +109,11 @@ git commit -m "chore: bootstrap Django project skeleton"
 Add `DATABASES` to `base.py` (psycopg 3.x backend via `env.db_url("DATABASE_URL")`).
 Add `config/settings/local.py`, `config/settings/test.py`, `config/settings/production.py`.
 
+> Windows note: plain `psycopg==3.3.4` fails to import with
+> `no pq wrapper available` because there's no system `libpq` on Windows by
+> default. Use `psycopg[binary]==3.3.4` instead (`uv remove psycopg && uv add
+> "psycopg[binary]==3.3.4"`), which bundles a prebuilt libpq.
+
 ```powershell
 $env:DJANGO_SETTINGS_MODULE = "config.settings.local"
 uv run python manage.py check --database default

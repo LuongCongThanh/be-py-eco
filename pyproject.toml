@@ -29,7 +29,7 @@ dependencies = [
     "phonenumberslite==9.0.36",
     "pillow==12.3.0",
     "prometheus-client==0.26.0",
-    "psycopg==3.3.4",
+    "psycopg[binary]==3.3.4",
     "redis==8.1.0",
     "sentry-sdk==2.67.1",
     "structlog==26.1.0",
