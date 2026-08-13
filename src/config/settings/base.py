@@ -29,6 +29,16 @@ CACHES = {
     },
 }
 
+# Celery — broker is RabbitMQ. task_ignore_result=True: see config/celery.py.
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="amqp://guest:guest@localhost:5672//")
+# A result backend is configured so `ping_task` (below) can prove the
+# worker<->broker<->result round-trip; real business tasks stay
+# ignore_result=True (the CELERY_TASK_IGNORE_RESULT default) since they
+# follow the transactional-outbox pattern (ADR-0004) and don't poll a result.
+CELERY_RESULT_BACKEND = env("REDIS_URL", default="redis://localhost:6379/0")
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TIMEZONE = "UTC"  # matches TIME_ZONE below
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -37,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [

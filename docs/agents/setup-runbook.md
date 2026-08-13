@@ -262,29 +262,37 @@ git commit -m "chore: add Redis cache configuration"
 ## Step 11 — Add RabbitMQ and a bare Celery app
 
 Add a `rabbitmq` service to `docker-compose.yml`. Add `src/config/celery.py`.
-Register `django_celery_beat`, run its migration. Add a trivial `ping_task`.
+Register `django_celery_beat`, run its migration. Add a trivial `ping_task`
+(`ignore_result=False`, overriding the global `CELERY_TASK_IGNORE_RESULT`
+default only for this smoke task, so its result can be asserted in tests).
+Configure `CELERY_RESULT_BACKEND` (Redis) for that same reason.
 
 ```powershell
 docker compose -f infra/compose/docker-compose.yml up -d rabbitmq
 $env:DJANGO_SETTINGS_MODULE = "config.settings.local"
 uv run python manage.py migrate
+uv run python -m pytest tests/test_celery.py
 ```
 
-In a **separate PowerShell window** (keep it running, foreground, to watch logs):
+The integration test uses Celery's pytest plugin `celery_worker` fixture
+(registered via `tests/conftest.py`) to run a real worker thread against the
+actual RabbitMQ broker + Redis result backend for the test's duration — no
+separately-started worker process needed. To watch it running manually
+instead, in a **separate PowerShell window**:
 
 ```powershell
+$env:PYTHONPATH = "src"
 $env:DJANGO_SETTINGS_MODULE = "config.settings.local"
-uv run celery -A config worker --loglevel=info
+uv run python -m celery -A config worker --loglevel=info --pool=solo
 ```
 
-Back in the original window:
+> Windows note: `celery`'s own CLI executable can hit the same Application
+> Control block as `pytest`/`mypy` — use `uv run python -m celery ...`. The
+> `--pool=solo` flag is needed because Celery's default prefork pool doesn't
+> work on Windows.
 
-```powershell
-uv run python -m pytest tests/ -k celery
-```
-
-**Check**: the worker window shows a successful connection to RabbitMQ; the
-integration test dispatching `ping_task.delay()` passes.
+**Check**: `pytest tests/test_celery.py` passes — proving the
+worker↔broker↔result round-trip for `ping_task.delay()`.
 
 ```powershell
 git add -A
