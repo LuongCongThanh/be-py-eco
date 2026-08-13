@@ -180,12 +180,15 @@ git commit -m "chore: wire pytest against real Postgres test db"
 
 ## Step 7 — Add lint/format tooling
 
-Add `[tool.ruff]` to `pyproject.toml`.
+Add `[tool.ruff]` to `pyproject.toml`, with `extend-exclude = [".agents", ".claude"]`
+(this repo vendors agent-skill docs under those dirs, and some of their
+example assets are intentionally-incomplete Python templates that ruff can't
+parse — exclude them rather than fixing them).
 
 ```powershell
-uv run ruff format .
-uv run ruff check .
-uv run ruff format --check .
+uv run ruff format src tests manage.py
+uv run ruff check src tests manage.py
+uv run ruff format --check src tests manage.py
 ```
 
 **Check**: both commands exit clean (no errors, no diffs pending).
