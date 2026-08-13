@@ -20,6 +20,10 @@ class Customer(BaseModel):
     email = models.EmailField(unique=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    # First-visit suggestion the Customer can override (guild.md §3.2);
+    # blank until they've either been suggested one or chosen manually.
+    preferred_locale = models.CharField(max_length=10, blank=True)
+    preferred_currency = models.CharField(max_length=3, blank=True)
 
     class Meta:
         db_table = "accounts_customer"

@@ -37,6 +37,8 @@ class CustomerResponseSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     email = serializers.EmailField()
     email_verified = serializers.BooleanField()
+    preferred_locale = serializers.CharField()
+    preferred_currency = serializers.CharField()
 
 
 class LoginSerializer(serializers.Serializer):
@@ -89,3 +91,8 @@ class RequestEmailChangeSerializer(serializers.Serializer):
 
 class ConfirmEmailChangeSerializer(serializers.Serializer):
     token = serializers.CharField()
+
+
+class UpdateLocalePreferenceSerializer(serializers.Serializer):
+    locale = serializers.CharField()
+    currency = serializers.CharField()

@@ -13,6 +13,7 @@ from modules.accounts.api.storefront.views import (
     SessionListView,
     SessionRevokeAllView,
     SessionRevokeView,
+    UpdateLocalePreferenceView,
     VerifyEmailView,
 )
 
@@ -23,6 +24,7 @@ urlpatterns = [
     path("login/google", GoogleLoginView.as_view(), name="accounts-login-google"),
     path("token/refresh", RefreshTokenView.as_view(), name="accounts-token-refresh"),
     path("me", MeView.as_view(), name="accounts-me"),
+    path("me/locale", UpdateLocalePreferenceView.as_view(), name="accounts-me-locale"),
     path("sessions", SessionListView.as_view(), name="accounts-sessions"),
     path(
         "sessions/<uuid:session_id>/revoke",

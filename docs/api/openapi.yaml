@@ -223,6 +223,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerResponse'
           description: ''
+  /api/v1/storefront/accounts/me/locale:
+    patch:
+      operationId: storefront_accounts_me_locale_partial_update
+      tags:
+      - storefront
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateLocalePreference'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateLocalePreference'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateLocalePreference'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+          description: ''
   /api/v1/storefront/accounts/password-reset/confirm:
     post:
       operationId: storefront_accounts_password_reset_confirm_create
@@ -392,6 +417,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerResponse'
           description: ''
+  /api/v1/storefront/localization/suggestion:
+    get:
+      operationId: storefront_localization_suggestion_retrieve
+      tags:
+      - storefront
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocaleSuggestionResponse'
+          description: ''
 components:
   schemas:
     ConfirmEmailChange:
@@ -446,10 +485,16 @@ components:
           format: email
         email_verified:
           type: boolean
+        preferred_locale:
+          type: string
+        preferred_currency:
+          type: string
       required:
       - email
       - email_verified
       - id
+      - preferred_currency
+      - preferred_locale
     GoogleLogin:
       type: object
       properties:
@@ -457,6 +502,20 @@ components:
           type: string
       required:
       - id_token
+    LocaleSuggestionResponse:
+      type: object
+      description: Response shape only — used for OpenAPI docs, not for validation.
+      properties:
+        country_code:
+          type: string
+        locale:
+          type: string
+        currency:
+          type: string
+      required:
+      - country_code
+      - currency
+      - locale
     Login:
       type: object
       properties:
@@ -477,6 +536,13 @@ components:
           type: string
       required:
       - provisioning_uri
+    PatchedUpdateLocalePreference:
+      type: object
+      properties:
+        locale:
+          type: string
+        currency:
+          type: string
     RefreshToken:
       type: object
       properties:

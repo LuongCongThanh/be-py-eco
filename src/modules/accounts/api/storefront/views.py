@@ -25,6 +25,7 @@ from modules.accounts.api.storefront.serializers import (
     RequestPasswordResetSerializer,
     SessionResponseSerializer,
     TokenResponseSerializer,
+    UpdateLocalePreferenceSerializer,
     VerifyEmailSerializer,
 )
 from modules.accounts.models import Customer, Session
@@ -38,6 +39,7 @@ from modules.accounts.services.sessions import (
     revoke_session,
     rotate_refresh_token,
 )
+from modules.accounts.services.update_locale_preference import update_locale_preference
 from modules.accounts.services.verify_email import verify_email
 
 
@@ -46,6 +48,8 @@ def _customer_representation(customer: Customer) -> dict:
         "id": str(customer.id),
         "email": customer.email,
         "email_verified": customer.is_email_verified,
+        "preferred_locale": customer.preferred_locale,
+        "preferred_currency": customer.preferred_currency,
     }
 
 
@@ -125,6 +129,20 @@ class MeView(APIView):
     @extend_schema(responses=CustomerResponseSerializer)
     def get(self, request: Request) -> Response:
         data = _customer_representation(cast(Customer, request.user))
+        return Response(success_envelope(data, request=request), status=status.HTTP_200_OK)
+
+
+class UpdateLocalePreferenceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=UpdateLocalePreferenceSerializer, responses=CustomerResponseSerializer)
+    def patch(self, request: Request) -> Response:
+        serializer = UpdateLocalePreferenceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        customer = update_locale_preference(
+            customer=cast(Customer, request.user), **serializer.validated_data
+        )
+        data = _customer_representation(customer)
         return Response(success_envelope(data, request=request), status=status.HTTP_200_OK)
 
 
