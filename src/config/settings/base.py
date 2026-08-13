@@ -134,6 +134,13 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": ["common.auth.authentication.JWTAuthentication"],
+    # Placeholder rates for local dev/test only — guild.md §16 requires
+    # concrete rate limits to be decided via a dedicated ticket, not
+    # invented in code. Override per-environment via these env vars.
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_ip": env("THROTTLE_RATE_AUTH_IP", default="20/min"),
+        "auth_account": env("THROTTLE_RATE_AUTH_ACCOUNT", default="5/min"),
+    },
 }
 
 # Customer JWTs: 10-15 min access, rotating/revocable refresh (guild.md §6.1).

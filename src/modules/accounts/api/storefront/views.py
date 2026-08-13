@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
+from common.api.throttling import AuthAccountRateThrottle, AuthIPRateThrottle
 from modules.accounts.api.storefront.serializers import (
     ConfirmEmailChangeSerializer,
     ConfirmPasswordResetSerializer,
@@ -51,6 +52,7 @@ def _customer_representation(customer: Customer) -> dict:
 class RegisterView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthIPRateThrottle, AuthAccountRateThrottle]
 
     @extend_schema(request=RegisterSerializer, responses={201: CustomerResponseSerializer})
     def post(self, request: Request) -> Response:
@@ -64,6 +66,7 @@ class RegisterView(APIView):
 class VerifyEmailView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthIPRateThrottle]
 
     @extend_schema(request=VerifyEmailSerializer, responses=CustomerResponseSerializer)
     def post(self, request: Request) -> Response:
@@ -77,6 +80,7 @@ class VerifyEmailView(APIView):
 class LoginView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthIPRateThrottle, AuthAccountRateThrottle]
 
     @extend_schema(request=LoginSerializer, responses=TokenResponseSerializer)
     def post(self, request: Request) -> Response:
@@ -162,6 +166,7 @@ class SessionRevokeAllView(APIView):
 class RequestPasswordResetView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthIPRateThrottle, AuthAccountRateThrottle]
 
     @extend_schema(request=RequestPasswordResetSerializer, responses={202: None})
     def post(self, request: Request) -> Response:
@@ -174,6 +179,9 @@ class RequestPasswordResetView(APIView):
 class ConfirmPasswordResetView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
+    # IP-only: the request body has no email to key a per-account throttle
+    # on, just an opaque token (protects against token brute-forcing).
+    throttle_classes = [AuthIPRateThrottle]
 
     @extend_schema(request=ConfirmPasswordResetSerializer, responses=CustomerResponseSerializer)
     def post(self, request: Request) -> Response:

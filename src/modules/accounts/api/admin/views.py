@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
+from common.api.throttling import AuthAccountRateThrottle, AuthIPRateThrottle, AuthUserRateThrottle
 from modules.accounts.api.admin.serializers import (
     ConfirmMfaSerializer,
     CreateStaffSerializer,
@@ -31,6 +32,7 @@ from modules.accounts.services.staff_login import login_staff
 class StaffLoginView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthIPRateThrottle, AuthAccountRateThrottle]
 
     @extend_schema(request=StaffLoginSerializer, responses=TokenResponseSerializer)
     def post(self, request: Request) -> Response:
@@ -65,6 +67,7 @@ class MfaSetupView(APIView):
 
 class MfaConfirmView(APIView):
     permission_classes = [IsAuthenticated, IsStaff]
+    throttle_classes = [AuthIPRateThrottle, AuthUserRateThrottle]
 
     @extend_schema(request=ConfirmMfaSerializer, responses={204: None})
     def post(self, request: Request) -> Response:

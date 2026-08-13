@@ -75,10 +75,12 @@ def exception_handler(exc: Exception, context: dict[str, Any]) -> Response | Non
         return None  # Unhandled — Django's own 500 handling takes over.
 
     headers = {}
-    if getattr(exc, "auth_header", None):
-        headers["WWW-Authenticate"] = exc.auth_header
-    if getattr(exc, "wait", None) is not None:
-        headers["Retry-After"] = f"{exc.wait}"
+    auth_header = getattr(exc, "auth_header", None)
+    if auth_header:
+        headers["WWW-Authenticate"] = auth_header
+    wait = getattr(exc, "wait", None)
+    if wait is not None:
+        headers["Retry-After"] = f"{wait}"
 
     request = context.get("request")
     errors = _flatten_full_details(exc.get_full_details())

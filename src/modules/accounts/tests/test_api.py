@@ -107,7 +107,7 @@ def test_login_then_me_returns_the_authenticated_customer(api_client: APIClient)
     assert login_response.json()["data"]["refresh"]
 
     me_response = api_client.get(
-        "/api/v1/storefront/accounts/me", HTTP_AUTHORIZATION=f"Bearer {access}"
+        "/api/v1/storefront/accounts/me", headers={"Authorization": f"Bearer {access}"}
     )
 
     assert me_response.status_code == status.HTTP_200_OK
@@ -147,13 +147,13 @@ def test_access_token_expires_after_its_configured_lifetime(api_client: APIClien
         access = login_response.json()["data"]["access"]
 
         still_valid = api_client.get(
-            "/api/v1/storefront/accounts/me", HTTP_AUTHORIZATION=f"Bearer {access}"
+            "/api/v1/storefront/accounts/me", headers={"Authorization": f"Bearer {access}"}
         )
         assert still_valid.status_code == status.HTTP_200_OK
 
     with freeze_time("2026-01-01 00:16:00"):  # ACCESS_TOKEN_LIFETIME is 15 minutes
         expired = api_client.get(
-            "/api/v1/storefront/accounts/me", HTTP_AUTHORIZATION=f"Bearer {access}"
+            "/api/v1/storefront/accounts/me", headers={"Authorization": f"Bearer {access}"}
         )
 
     assert expired.status_code == status.HTTP_401_UNAUTHORIZED
@@ -185,20 +185,20 @@ def test_token_refresh_rotates_and_rejects_reuse(api_client: APIClient) -> None:
 def test_session_list_then_revoke_one(api_client: APIClient) -> None:
     _register(api_client, "sessapi1@example.com", "a-strong-password-123")
     tokens = _login(api_client, "sessapi1@example.com", "a-strong-password-123")
-    auth = {"HTTP_AUTHORIZATION": f"Bearer {tokens['access']}"}
+    auth = {"Authorization": f"Bearer {tokens['access']}"}
 
-    list_response = api_client.get("/api/v1/storefront/accounts/sessions", **auth)
+    list_response = api_client.get("/api/v1/storefront/accounts/sessions", headers=auth)
     assert list_response.status_code == status.HTTP_200_OK
     sessions = list_response.json()["data"]
     assert len(sessions) == 1
     session_id = sessions[0]["id"]
 
     revoke_response = api_client.post(
-        f"/api/v1/storefront/accounts/sessions/{session_id}/revoke", **auth
+        f"/api/v1/storefront/accounts/sessions/{session_id}/revoke", headers=auth
     )
     assert revoke_response.status_code == status.HTTP_204_NO_CONTENT
 
-    list_after = api_client.get("/api/v1/storefront/accounts/sessions", **auth)
+    list_after = api_client.get("/api/v1/storefront/accounts/sessions", headers=auth)
     assert list_after.json()["data"] == []
 
 
@@ -207,12 +207,14 @@ def test_revoke_all_sessions(api_client: APIClient) -> None:
     _register(api_client, "sessapi2@example.com", "a-strong-password-123")
     _login(api_client, "sessapi2@example.com", "a-strong-password-123")
     tokens = _login(api_client, "sessapi2@example.com", "a-strong-password-123")
-    auth = {"HTTP_AUTHORIZATION": f"Bearer {tokens['access']}"}
+    auth = {"Authorization": f"Bearer {tokens['access']}"}
 
-    revoke_all_response = api_client.post("/api/v1/storefront/accounts/sessions/revoke-all", **auth)
+    revoke_all_response = api_client.post(
+        "/api/v1/storefront/accounts/sessions/revoke-all", headers=auth
+    )
     assert revoke_all_response.status_code == status.HTTP_204_NO_CONTENT
 
-    list_after = api_client.get("/api/v1/storefront/accounts/sessions", **auth)
+    list_after = api_client.get("/api/v1/storefront/accounts/sessions", headers=auth)
     assert list_after.json()["data"] == []
 
 
@@ -228,7 +230,7 @@ def test_google_login_journey(api_client: APIClient) -> None:
     access = response.json()["data"]["access"]
 
     me_response = api_client.get(
-        "/api/v1/storefront/accounts/me", HTTP_AUTHORIZATION=f"Bearer {access}"
+        "/api/v1/storefront/accounts/me", headers={"Authorization": f"Bearer {access}"}
     )
     assert me_response.json()["data"]["email"] == "googleapi@example.com"
 
@@ -274,13 +276,13 @@ def test_password_reset_journey(api_client: APIClient) -> None:
 def test_email_change_journey(api_client: APIClient) -> None:
     _register(api_client, "changeold@example.com", "a-strong-password-123")
     tokens = _login(api_client, "changeold@example.com", "a-strong-password-123")
-    auth = {"HTTP_AUTHORIZATION": f"Bearer {tokens['access']}"}
+    auth = {"Authorization": f"Bearer {tokens['access']}"}
 
     request_response = api_client.post(
         "/api/v1/storefront/accounts/email-change/request",
         {"new_email": "changenew@example.com"},
         format="json",
-        **auth,
+        headers=auth,
     )
     assert request_response.status_code == status.HTTP_202_ACCEPTED
 

@@ -39,7 +39,7 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
 ) -> None:
     master_admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN))
     admin_tokens = _staff_login(api_client, master_admin.email, "a-strong-password-123")
-    admin_auth = {"HTTP_AUTHORIZATION": f"Bearer {admin_tokens['access']}"}
+    admin_auth = {"Authorization": f"Bearer {admin_tokens['access']}"}
 
     create_response = api_client.post(
         "/api/v1/admin/staff",
@@ -49,12 +49,12 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
             "role": "store_manager",
         },
         format="json",
-        **admin_auth,
+        headers=admin_auth,
     )
     assert create_response.status_code == status.HTTP_201_CREATED
 
     manager_tokens = _staff_login(api_client, "newmanager@example.com", "a-strong-password-123")
-    manager_auth = {"HTTP_AUTHORIZATION": f"Bearer {manager_tokens['access']}"}
+    manager_auth = {"Authorization": f"Bearer {manager_tokens['access']}"}
 
     register_response = api_client.post(
         "/api/v1/storefront/accounts/register",
@@ -64,23 +64,23 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
     customer_id = register_response.json()["data"]["id"]
 
     blocked_response = api_client.post(
-        f"/api/v1/admin/customers/{customer_id}/disable", **manager_auth
+        f"/api/v1/admin/customers/{customer_id}/disable", headers=manager_auth
     )
     assert blocked_response.status_code == status.HTTP_403_FORBIDDEN
     assert blocked_response.json()["code"] == "accounts.mfa_not_configured"
 
-    setup_response = api_client.post("/api/v1/admin/staff/mfa/setup", **manager_auth)
+    setup_response = api_client.post("/api/v1/admin/staff/mfa/setup", headers=manager_auth)
     assert setup_response.status_code == status.HTTP_200_OK
     provisioning_uri = setup_response.json()["data"]["provisioning_uri"]
     code = _code_from_provisioning_uri(provisioning_uri)
 
     confirm_response = api_client.post(
-        "/api/v1/admin/staff/mfa/confirm", {"token": code}, format="json", **manager_auth
+        "/api/v1/admin/staff/mfa/confirm", {"token": code}, format="json", headers=manager_auth
     )
     assert confirm_response.status_code == status.HTTP_204_NO_CONTENT
 
     allowed_response = api_client.post(
-        f"/api/v1/admin/customers/{customer_id}/disable", **manager_auth
+        f"/api/v1/admin/customers/{customer_id}/disable", headers=manager_auth
     )
     assert allowed_response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -89,13 +89,13 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
 def test_non_master_admin_cannot_create_staff(api_client: APIClient) -> None:
     manager = cast(Staff, StaffFactory(role=Staff.Role.STORE_MANAGER))
     tokens = _staff_login(api_client, manager.email, "a-strong-password-123")
-    auth = {"HTTP_AUTHORIZATION": f"Bearer {tokens['access']}"}
+    auth = {"Authorization": f"Bearer {tokens['access']}"}
 
     response = api_client.post(
         "/api/v1/admin/staff",
         {"email": "x@example.com", "password": "a-strong-password-123", "role": "order_staff"},
         format="json",
-        **auth,
+        headers=auth,
     )
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -121,7 +121,7 @@ def test_customer_jwt_cannot_call_admin_endpoints(api_client: APIClient) -> None
         "/api/v1/admin/staff",
         {"email": "x@example.com", "password": "a-strong-password-123", "role": "order_staff"},
         format="json",
-        HTTP_AUTHORIZATION=f"Bearer {access}",
+        headers={"Authorization": f"Bearer {access}"},
     )
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
