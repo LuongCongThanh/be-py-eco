@@ -355,7 +355,7 @@ Add a multi-stage `Dockerfile` (using `uv`) under `infra/docker/Dockerfile`.
 Add a CI job that builds it.
 
 ```powershell
-docker build -f infra/docker/Dockerfile -t be-py-eco-backend:local .
+docker build -f infra/docker/Dockerfile -t be-py-eco:local .
 ```
 
 **Check**: `docker build` succeeds locally and in CI.
