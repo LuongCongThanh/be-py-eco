@@ -121,7 +121,7 @@ jobs:
 
       - name: Secret scan (detect-secrets)
         run: |
-          uv run detect-secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' > /tmp/secrets-scan.json
+          uv run detect-secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' --exclude-files '\.secrets\.baseline' > /tmp/secrets-scan.json
           uv run python -c "
           import json, sys
           baseline = json.load(open('.secrets.baseline'))['results']
