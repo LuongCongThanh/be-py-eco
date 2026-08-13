@@ -1162,7 +1162,7 @@ GitHub Actions.
 
 ```powershell
 uv run python -m pip_audit
-uv run python -m bandit -r src
+uv run python -m bandit -r src -c pyproject.toml
 uv run python -m detect_secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' --exclude-files '\.secrets\.baseline' > .secrets.baseline
 ```
 

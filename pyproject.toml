@@ -59,6 +59,12 @@ dev = [
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 pythonpath = ["src"]
 
+# Test files (src/modules/*/tests/, per guild.md's module layout) routinely
+# use `assert` and literal fixture passwords/tokens — both are false
+# positives bandit exists to catch in production code, not test code.
+[tool.bandit]
+exclude_dirs = ["tests"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py313"

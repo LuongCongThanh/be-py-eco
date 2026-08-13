@@ -70,7 +70,7 @@ uv run python -m mypy src
 
 # Dependency / security scans
 uv run python -m pip_audit
-uv run python -m bandit -r src
+uv run python -m bandit -r src -c pyproject.toml
 uv run python -m detect_secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude'
 
 # Run a Celery worker manually (rarely needed — tests spin up their own via

@@ -122,7 +122,7 @@ jobs:
         run: uv run pip-audit
 
       - name: Static security scan (bandit)
-        run: uv run bandit -r src
+        run: uv run bandit -r src -c pyproject.toml
 
       - name: Secret scan (detect-secrets)
         run: |
