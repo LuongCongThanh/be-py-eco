@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 5: Duck Typing &amp; Dict/Set</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 5 · Python cốt lõi</div>
+  <h1>Duck typing: quan tâm hành vi, không quan tâm khai báo kiểu</h1>
+
+  <p>Python không có khái niệm <code>interface</code> bắt buộc như nhiều
+  ngôn ngữ khác, và dùng sâu hơn <code>dict</code>/<code>set</code>.</p>
+
+  <h2>1. Duck typing là gì, và vì sao Python làm vậy</h2>
+  <p>Ngôn ngữ static typing (Java, C#, TypeScript...) bắt các class khai báo
+  rõ mình implement interface nào, rồi compiler kiểm tra trước khi chạy.
+  Python bỏ qua bước đó: khi gọi <code>animal.speak()</code>, nó chỉ hỏi
+  "object này có method <code>speak</code> không?" ngay tại thời điểm gọi.</p>
+
+  <div style="text-align: center; margin: 1.5rem 0;">
+    <svg viewBox="0 0 360 200" width="100%" style="max-width: 26rem; height: auto;" role="img" aria-label="Sơ đồ duck typing: Dog và Duck không cùng lớp cha, cả hai đều chỉ vào make_it_speak(animal) vì đều có .speak()">
+      <defs>
+        <marker id="arrowhead5" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"></path>
+        </marker>
+      </defs>
+      <rect x="20" y="15" width="100" height="46" rx="6" fill="none" stroke="var(--border)" stroke-width="1.5"></rect>
+      <text x="70" y="43" text-anchor="middle" fill="currentColor" font-size="15">Dog</text>
+
+      <rect x="240" y="15" width="100" height="46" rx="6" fill="none" stroke="var(--border)" stroke-width="1.5"></rect>
+      <text x="290" y="43" text-anchor="middle" fill="currentColor" font-size="15">Duck</text>
+
+      <rect x="80" y="130" width="200" height="50" rx="6" fill="none" stroke="var(--accent)" stroke-width="2"></rect>
+      <text x="180" y="160" text-anchor="middle" fill="currentColor" font-size="13">make_it_speak(animal)</text>
+
+      <line x1="80" y1="61" x2="165" y2="128" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrowhead5)"></line>
+      <line x1="280" y1="61" x2="195" y2="128" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrowhead5)"></line>
+
+      <text x="180" y="20" text-anchor="middle" fill="var(--muted, currentColor)" font-size="12" font-style="italic">chỉ cần có .speak()</text>
+    </svg>
+  </div>
+  <pre><code>def make_it_speak(animal):
+    return animal.speak()
+
+class Dog:
+    def speak(self): return "woof"
+
+class Duck:
+    def speak(self): return "quack"
+
+make_it_speak(Dog())    # -> "woof"
+make_it_speak(Duck())   # -> "quack"
+
+class Robot:
+    def speak(self): return "beep boop"
+
+make_it_speak(Robot())  # -> "beep boop" — Robot không liên quan gì tới Dog/Duck,
+                         # không kế thừa chung class nào, vẫn chạy được</code></pre>
+  <div class="callout">
+    "If it walks like a duck and quacks like a duck, it's a duck." —
+    <code>make_it_speak</code> không kiểm tra <code>animal</code> là
+    <code>Dog</code> hay <code>Duck</code>, cũng không cần cả hai class
+    cùng implement một <code>interface</code> khai báo trước. Miễn là
+    object có method <code>speak()</code>, hàm chạy được.
+  </div>
+
+  <p>Hệ quả: Python <strong>không</strong> báo lỗi thiếu method trước —
+  lỗi chỉ lộ ra khi dòng code đó thực sự chạy:</p>
+  <pre><code>class Cat:
+    pass  # quên định nghĩa speak()
+
+make_it_speak(Cat())
+# -> AttributeError: 'Cat' object has no attribute 'speak'
+# (lỗi này chỉ xảy ra khi gọi make_it_speak(Cat()), không phải khi định nghĩa Cat)</code></pre>
+
+  <div class="compare">
+    <div>
+      <h3>Ngôn ngữ static typing</h3>
+      <p>Bắt khai báo <code>implements ISpeaker</code>; compiler chặn lỗi
+      thiếu method trước khi chạy.</p>
+    </div>
+    <div>
+      <h3>Python (duck typing)</h3>
+      <p>Không cần khai báo; linh hoạt hơn nhưng lỗi thiếu method chỉ lộ
+      ra lúc chạy.</p>
+    </div>
+  </div>
+
+  <h2>2. <code>dict</code>: truy cập, thêm, kiểm tra tồn tại</h2>
+  <p><code>dict</code> lưu dữ liệu dạng <em>key → value</em>, giống
+  <code>Map</code>/<code>HashMap</code> ở ngôn ngữ khác — nhưng giữ nguyên
+  <strong>thứ tự chèn</strong> (từ Python 3.7+).</p>
+  <pre><code>person = {"name": "Lan", "age": 25}
+
+person["name"]              # -> "Lan"
+person["job"]               # -> KeyError: 'job'  (key không tồn tại!)
+person.get("job", "n/a")    # -> "n/a" — không lỗi nếu thiếu key
+person.get("job")           # -> None  (mặc định của .get() là None nếu không truyền default)
+person["job"] = "engineer"  # thêm key mới (dict cho phép sửa — mutable)
+person["age"] = 26           # sửa giá trị key đã có
+"age" in person              # -> True
+"salary" in person            # -> False</code></pre>
+  <p>Quy tắc chọn: dùng <code>[]</code> khi chắc chắn key phải có (thiếu
+  là bug); dùng <code>.get()</code> khi thiếu key là chuyện bình thường.</p>
+
+  <h2>3. Lặp qua dict</h2>
+  <pre><code>for key, value in person.items():
+    print(key, value)
+# -> name Lan
+# -> age 26
+# -> job engineer
+
+for key in person:            # lặp mặc định chỉ cho key, không cần .keys()
+    print(key)
+# -> name
+# -> age
+# -> job</code></pre>
+  <p><code>for key, value in ...</code> lại là <em>unpacking</em> (bài 3):
+  <code>.items()</code> trả từng cặp <code>(key, value)</code>, giống
+  <code>enumerate()</code>.</p>
+
+  <h2>4. Dict comprehension — cùng ý tưởng với list comprehension (bài 2)</h2>
+  <pre><code>squares = {x: x * x for x in range(5)}
+# -> {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}
+
+# Ví dụ thực tế hơn: đảo ngược key/value
+prices = {"apple": 3, "banana": 1}
+by_price = {v: k for k, v in prices.items()}
+# -> {3: "apple", 1: "banana"}</code></pre>
+
+  <h2>5. <code>set</code>: tập hợp, phép toán tập hợp</h2>
+  <p><code>set</code> là tập hợp phần tử <strong>duy nhất, không thứ
+  tự</strong>, dùng cùng cơ chế hash như <code>dict</code>. Nhờ vậy kiểm
+  tra "X có trong set" gần như tức thời (O(1)), còn "X có trong list"
+  phải quét từng phần tử (O(n)).</p>
+  <pre><code>a = {1, 2, 3}
+b = {2, 3, 4}
+
+a | b   # hợp:  -> {1, 2, 3, 4}
+a & b   # giao: -> {2, 3}
+a - b   # hiệu: -> {1}
+
+# Loại trùng lặp từ 1 danh sách
+names = ["Lan", "Huy", "Lan", "Mai", "Huy"]
+unique_names = set(names)
+# -> {"Lan", "Huy", "Mai"}  (thứ tự có thể khác, set không giữ thứ tự chèn)
+
+3 in a          # -> True, gần như tức thời dù a có bao nhiêu phần tử
+3 in [1, 2, 3]  # -> True nhưng phải quét list từ đầu tới khi thấy 3</code></pre>
+  <p>Lưu ý: <code>{}</code> rỗng tạo ra <code>dict</code> rỗng, không phải
+  <code>set</code> rỗng (vì <code>dict</code> ra đời trước và chiếm cú pháp
+  đó) — muốn set rỗng phải viết <code>set()</code>.</p>
+  <pre><code>type({})     # -> &lt;class 'dict'&gt;
+type(set())  # -> &lt;class 'set'&gt;</code></pre>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0005-duck-typing-and-dicts.html">Cheat sheet Duck Typing &amp; Dict/Set</a>.
+  Nguồn chính nên đọc song song: <a href="https://docs.python.org/3/tutorial/datastructures.html#dictionaries">The Python Tutorial §5.5 — Dictionaries</a> và <a href="https://docs.python.org/3/tutorial/datastructures.html#sets">§5.4 — Sets</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. Để <code>make_it_speak(animal)</code> chạy được với cả <code>Dog</code> và <code>Duck</code>, hai class này cần gì?</p>
+      <button data-correct="false" onclick="answer(this)">Cùng kế thừa 1 interface</button>
+      <button data-correct="true" onclick="answer(this)">Cùng có method speak()</button>
+      <button data-correct="false" onclick="answer(this)">Cùng tên biến self</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. <code>person.get("job", "n/a")</code> khi key "job" không tồn tại sẽ:</p>
+      <button data-correct="false" onclick="answer(this)">Ném lỗi KeyError</button>
+      <button data-correct="true" onclick="answer(this)">Trả về "n/a"</button>
+      <button data-correct="false" onclick="answer(this)">Trả về None luôn</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. <code>{1, 2, 3} & {2, 3, 4}</code> trả về gì?</p>
+      <button data-correct="false" onclick="answer(this)">{1, 2, 3, 4}</button>
+      <button data-correct="true" onclick="answer(this)">{2, 3}</button>
+      <button data-correct="false" onclick="answer(this)">{1}</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span>← <a href="0004-classes-basics.html">Bài 4: Class cơ bản</a></span>
+    <span>Tiếp theo: <a href="0006-exceptions-and-context-managers.html">Bài 6: Exception &amp; Context Manager</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>

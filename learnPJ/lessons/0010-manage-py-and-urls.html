@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 10: manage.py &amp; urls.py</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 10 · Giai đoạn 2 — Django/DRF trong be-py-eco</div>
+  <h1><code>manage.py</code> làm gì, và request đi về đâu</h1>
+
+  <p><code>manage.py</code> — file bạn gõ liên tục
+  (<code>uv run python manage.py ...</code>) — thực ra làm gì? Và Django
+  biết chạy code nào khi có request tới nhờ đâu?</p>
+
+  <h2>1. <code>if __name__ == "__main__":</code> — idiom mới, chưa gặp ở bài 1–7</h2>
+  <pre><code># manage.py
+def main():
+    ...
+
+if __name__ == "__main__":
+    main()</code></pre>
+  <p><code>__name__</code> là biến string Python <strong>tự động gán cho
+  mọi module</strong> khi nạp. Giá trị phụ thuộc vào cách file được chạy:</p>
+  <ul>
+    <li>Nếu file được <strong>chạy trực tiếp</strong> bằng
+      <code>python manage.py ...</code>, Python đặt
+      <code>__name__ = "__main__"</code> cho chính file đó.</li>
+    <li>Nếu file bị <strong>import</strong> từ file khác (ví dụ
+      <code>import manage</code>), Python đặt <code>__name__</code> bằng
+      <strong>tên module</strong> — ở đây là <code>"manage"</code> —
+      chứ không phải <code>"__main__"</code>.</li>
+  </ul>
+  <div class="callout">
+    Ví dụ minh hoạ: giả sử có file <code>b.py</code>:
+    <pre><code># b.py
+print("giá trị __name__ của b.py là:", __name__)</code></pre>
+    và file <code>a.py</code>:
+    <pre><code># a.py
+import b</code></pre>
+    <ul>
+      <li>Chạy <code>python b.py</code> trực tiếp → in ra
+        <code>giá trị __name__ của b.py là: __main__</code>.</li>
+      <li>Chạy <code>python a.py</code> (import b từ a) → in ra
+        <code>giá trị __name__ của b.py là: b</code> — vì lúc này
+        <code>b.py</code> không phải file khởi động, nó chỉ là module
+        bị mượn code.</li>
+    </ul>
+    Cùng một file, cùng một dòng <code>print</code>, nhưng
+    <code>__name__</code> khác nhau tuỳ cách file được gọi.
+  </div>
+  <p><code>if __name__ == "__main__": main()</code> nghĩa là: chỉ tự chạy
+  <code>main()</code> khi file được chạy trực tiếp, không chạy khi bị
+  import để tái sử dụng.</p>
+
+  <div class="compare">
+    <div>
+      <h3>Node.js</h3>
+      <p>Gần nhất là <code>require.main === module</code> (CommonJS) —
+      cùng ý tưởng, khác cú pháp.</p>
+    </div>
+    <div>
+      <h3>Python</h3>
+      <p>Cơ chế có sẵn, không cần import gì thêm — idiom phổ biến ở
+      cuối gần như mọi script chạy độc lập.</p>
+    </div>
+  </div>
+
+  <h2>2. <code>manage.py</code> thật sự làm 3 việc</h2>
+  <p>Nội dung thật của <code>manage.py</code> trong be-py-eco (đã lược
+  comment/docstring):</p>
+  <pre><code>SRC_DIR = Path(__file__).resolve().parent / "src"
+
+def main():
+    sys.path.insert(0, str(SRC_DIR))
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
+    try:
+        from django.core.management import execute_from_command_line
+    except ImportError as exc:
+        raise ImportError(...) from exc
+    execute_from_command_line(sys.argv)
+
+if __name__ == "__main__":
+    main()</code></pre>
+  <ol>
+    <li><code>sys.path.insert(0, str(SRC_DIR))</code>: thêm
+      <code>src/</code> vào đầu đường dẫn tìm module, để
+      <code>import config...</code> hoạt động.</li>
+    <li><code>os.environ.setdefault(...)</code>: chỉ đặt biến môi
+      trường này <strong>khi chưa tồn tại</strong> — không ghi đè nếu
+      bạn đã tự set (ví dụ cho staging).</li>
+    <li><code>execute_from_command_line(sys.argv)</code>: chuyển toàn
+      bộ tham số dòng lệnh cho Django xử lý — cùng một file phục vụ mọi
+      lệnh (<code>migrate</code>, <code>runserver</code>, ...).</li>
+  </ol>
+  <p><code>try/except ImportError</code> quanh việc import Django: nếu
+  Django chưa cài, ném lại thông báo rõ ràng thay vì lỗi khó hiểu mặc định.</p>
+
+  <h2>3. <code>urls.py</code>: bản đồ URL → hàm xử lý (view)</h2>
+  <p>Khi request HTTP tới, Django tra <code>urlpatterns</code> — danh
+  sách cặp (URL, view) do bạn khai báo — để biết chạy code nào. Cú pháp
+  tổng quát (ví dụ minh hoạ, không phải code hiện có trong be-py-eco):</p>
+  <pre><code>from django.urls import path
+urlpatterns = [
+    path("health/", health_check_view),
+    path("api/v1/orders/", order_list_view),
+]</code></pre>
+  <p>Mỗi <code>path(...)</code> ghép một URL với một <em>view</em> —
+  hàm/class chạy khi request khớp URL đó, thay cho if/else so khớp thủ công.</p>
+
+  <div style="text-align:center; margin: 1.5rem 0;">
+    <svg viewBox="0 0 640 130" width="100%" style="max-width: 40rem; height: auto;" role="img" aria-label="Luồng xử lý request: Request GET /api/v1/books/ đi tới urlpatterns trong urls.py, urlpatterns chuyển tới view function, view function trả về Response">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"></path>
+        </marker>
+      </defs>
+      <g font-family="inherit" font-size="12" fill="currentColor">
+        <rect x="4" y="45" width="140" height="40" rx="6" fill="none" stroke="var(--border)"></rect>
+        <text x="74" y="62" text-anchor="middle">Request:</text>
+        <text x="74" y="77" text-anchor="middle">GET /api/v1/books/</text>
+
+        <line x1="144" y1="65" x2="188" y2="65" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow)"></line>
+
+        <rect x="192" y="45" width="140" height="40" rx="6" fill="none" stroke="var(--border)"></rect>
+        <text x="262" y="62" text-anchor="middle">urlpatterns</text>
+        <text x="262" y="77" text-anchor="middle">(urls.py)</text>
+
+        <line x1="332" y1="65" x2="376" y2="65" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow)"></line>
+
+        <rect x="380" y="45" width="130" height="40" rx="6" fill="none" stroke="var(--border)"></rect>
+        <text x="445" y="70" text-anchor="middle">view function</text>
+
+        <line x1="510" y1="65" x2="554" y2="65" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow)"></line>
+
+        <rect x="558" y="45" width="78" height="40" rx="6" fill="none" stroke="var(--border)"></rect>
+        <text x="597" y="70" text-anchor="middle">Response</text>
+      </g>
+    </svg>
+  </div>
+  <div class="callout">
+    Nội dung <strong>thật</strong> của <code>src/config/urls.py</code>
+    trong be-py-eco hiện tại:
+    <pre><code>"""URL configuration for the be-py-eco project.
+
+Empty for now — the `/api/v1/...` namespace and `/health/*` endpoints land
+in Slice 1 (see Issue #5's "Explicit non-decisions" section).
+"""
+
+from django.urls import URLPattern, URLResolver
+
+urlpatterns: list[URLPattern | URLResolver] = []</code></pre>
+    <code>urlpatterns</code> đang <strong>rỗng</strong> — có chủ đích:
+    dự án ở Slice 0, route <code>/api/v1/...</code> và
+    <code>/health/*</code> sẽ thêm ở Slice 1 (xem Issue #5).
+    Type hint <code>list[URLPattern | URLResolver]</code>: mỗi phần tử
+    phải là <code>URLPattern</code> (từ <code>path(...)</code>) hoặc
+    <code>URLResolver</code> (khi include URL con) — giúp editor/mypy
+    bắt lỗi sớm, không ảnh hưởng lúc chạy.
+  </div>
+
+  <h2>4. Vì sao tách <code>manage.py</code> và <code>urls.py</code> ra hai việc khác nhau?</h2>
+  <p><code>manage.py</code> là <strong>điểm vào dòng lệnh</strong> —
+  chạy một lần rồi thoát. <code>urls.py</code> là <strong>cấu hình định
+  tuyến</strong> — Django nạp và giữ suốt thời gian server chạy. Hai
+  file không gọi trực tiếp lẫn nhau: Django tự tìm đến
+  <code>urls.py</code> qua <code>DJANGO_SETTINGS_MODULE</code> →
+  <code>ROOT_URLCONF</code>. Mỗi file một trách nhiệm rõ ràng.</p>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0010-manage-py-and-urls.html">Cheat sheet manage.py &amp; urls.py</a>.
+  Nguồn chính nên đọc song song: <a href="https://docs.djangoproject.com/en/stable/ref/django-admin/">Django docs — django-admin and manage.py</a> và <a href="https://docs.djangoproject.com/en/stable/topics/http/urls/">Django docs — URL dispatcher</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. <code>if __name__ == "__main__":</code> có nghĩa là gì?</p>
+      <button data-correct="false" onclick="answer(this)">Chỉ chạy nếu có internet</button>
+      <button data-correct="true" onclick="answer(this)">Chỉ chạy khi file được chạy trực tiếp</button>
+      <button data-correct="false" onclick="answer(this)">Chỉ chạy trong môi trường test</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. Vì sao manage.py dùng <code>os.environ.setdefault(...)</code> thay vì gán trực tiếp <code>=</code>?</p>
+      <button data-correct="false" onclick="answer(this)">Để chạy nhanh hơn</button>
+      <button data-correct="true" onclick="answer(this)">Để không ghi đè nếu bạn đã tự set</button>
+      <button data-correct="false" onclick="answer(this)">Cú pháp Django bắt buộc</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. Tại sao <code>urlpatterns</code> trong be-py-eco hiện đang rỗng?</p>
+      <button data-correct="false" onclick="answer(this)">Vì file bị lỗi</button>
+      <button data-correct="true" onclick="answer(this)">Vì project mới ở Slice 0</button>
+      <button data-correct="false" onclick="answer(this)">Vì chưa cài Django</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span>← <a href="0009-django-settings-anatomy.html">Bài 9: Django Settings Anatomy</a></span>
+    <span>Tiếp theo: <a href="0011-models-and-orm-basics.html">Bài 11: Model &amp; ORM cơ bản</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tra cứu: Model &amp; ORM cơ bản</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Tài liệu tra cứu</div>
+  <h1>Model &amp; ORM cơ bản — Cheat Sheet</h1>
+
+  <h2>Model = 1 class Python = 1 table trong database</h2>
+  <pre><code>from django.db import models
+
+class Book(models.Model):
+    title = models.CharField(max_length=200)
+    author = models.CharField(max_length=200)
+    available = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)</code></pre>
+  <p>Mỗi thuộc tính là một cột. <code>models.Model</code> là base class
+  cung cấp toàn bộ hành vi ORM (lưu, truy vấn, ...).</p>
+
+  <h2>Migration: đồng bộ class Python ↔ schema database</h2>
+  <pre><code>uv run python manage.py makemigrations   # sinh file migration tu thay doi model
+uv run python manage.py migrate           # ap dung migration vao database</code></pre>
+  <p><code>makemigrations</code> so sánh model hiện tại với migration cũ,
+  sinh ra file Python mô tả thay đổi. <code>migrate</code> chạy các file
+  đó để thực sự sửa schema trong Postgres.</p>
+
+  <h2>QuerySet: truy vấn qua method chain, không viết SQL tay</h2>
+  <pre><code>Book.objects.all()
+Book.objects.filter(available=True)
+Book.objects.filter(author="Nam Cao").first()
+Book.objects.get(id=some_id)          # loi neu khong tim thay hoac tim thay > 1
+Book.objects.create(title="Chi Pheo", author="Nam Cao")</code></pre>
+  <p><code>Book.objects</code> là một <em>manager</em> — điểm vào để xây
+  QuerySet. Mỗi <code>.filter()</code>/<code>.exclude()</code> trả về một
+  QuerySet mới, có thể chain tiếp.</p>
+
+  <h2>Lazy evaluation: QuerySet chưa chạy SQL cho tới khi cần</h2>
+  <pre><code>qs = Book.objects.filter(available=True)   # CHUA chay SQL
+for book in qs:                             # bay gio moi chay SQL
+    print(book.title)</code></pre>
+
+  <p class="sources">Nguồn chính: <a href="https://docs.djangoproject.com/en/stable/topics/db/models/">Django docs — Models</a> và <a href="https://docs.djangoproject.com/en/stable/topics/db/queries/">Django docs — Making queries</a></p>
+</main>
+</body>
+</html>

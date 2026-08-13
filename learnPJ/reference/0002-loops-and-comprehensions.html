@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tra cứu: Vòng lặp &amp; Comprehension</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Tài liệu tra cứu</div>
+  <h1>Vòng lặp &amp; Comprehension — Cheat Sheet</h1>
+
+  <h2><code>for</code>: lặp trực tiếp trên phần tử</h2>
+  <pre><code>fruits = ["apple", "banana", "cherry"]
+for fruit in fruits:
+    print(fruit)</code></pre>
+  <p><code>for</code> trong Python luôn là "for-each" — không có kiểu
+  <code>for (i = 0; i &lt; n; i++)</code>.</p>
+
+  <h2><code>range()</code>: khi cần đếm số</h2>
+  <pre><code>for i in range(5):        # 0, 1, 2, 3, 4
+    print(i)
+
+for i in range(2, 10, 2): # 2, 4, 6, 8
+    print(i)</code></pre>
+
+  <h2><code>enumerate()</code>: cần cả chỉ số lẫn giá trị</h2>
+  <pre><code>for i, fruit in enumerate(fruits):
+    print(i, fruit)   # 0 apple / 1 banana / 2 cherry</code></pre>
+
+  <h2><code>while</code>: giống hầu hết ngôn ngữ khác</h2>
+  <pre><code>n = 5
+while n > 0:
+    print(n)
+    n -= 1        # không có n--</code></pre>
+
+  <h2>List comprehension: xây list từ một vòng lặp, trong 1 dòng</h2>
+  <pre><code>squares = [x * x for x in range(5)]
+# tương đương:
+squares = []
+for x in range(5):
+    squares.append(x * x)
+
+# có điều kiện lọc
+evens = [x for x in range(10) if x % 2 == 0]</code></pre>
+  <p>Cấu trúc: <code>[biểu_thức for biến in iterable if điều_kiện]</code>.
+  Phần <code>if</code> là tùy chọn.</p>
+
+  <h2><code>break</code> / <code>continue</code></h2>
+  <p>Giống hầu hết ngôn ngữ: <code>break</code> thoát vòng lặp,
+  <code>continue</code> bỏ qua phần còn lại của lần lặp hiện tại.</p>
+
+  <p class="sources">Nguồn chính: <a href="https://docs.python.org/3/tutorial/controlflow.html">The Python Tutorial §4 — More Control Flow Tools</a></p>
+</main>
+</body>
+</html>

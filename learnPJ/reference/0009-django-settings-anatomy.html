@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tra cứu: Django Settings Anatomy</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Tài liệu tra cứu</div>
+  <h1>Django Settings — Cheat Sheet (theo be-py-eco)</h1>
+
+  <h2>Settings là một module Python bình thường</h2>
+  <pre><code># src/config/settings/base.py
+SECRET_KEY = env("SECRET_KEY")
+DEBUG = env.bool("DEBUG", default=False)
+DATABASES = {"default": env.db_url("DATABASE_URL")}</code></pre>
+  <p>Không có DSL riêng — settings chỉ là biến toàn cục trong 1 file
+  <code>.py</code>. Django import module này và đọc các biến ra.</p>
+
+  <h2><code>DJANGO_SETTINGS_MODULE</code>: đường dẫn dotted tới module đó</h2>
+  <pre><code>$env:DJANGO_SETTINGS_MODULE = "config.settings.local"</code></pre>
+  <p>Chuỗi <code>"config.settings.local"</code> tương ứng file
+  <code>src/config/settings/local.py</code> — dấu chấm thay cho dấu
+  <code>/</code>, giống <code>import config.settings.local</code>.</p>
+
+  <h2>Layering: local/test/production kế thừa base bằng <code>import *</code></h2>
+  <pre><code># src/config/settings/local.py
+from .base import *   # lay toan bo bien tu base.py
+
+DEBUG = True           # roi ghi de rieng 1 bien</code></pre>
+  <p><code>from .base import *</code> đưa toàn bộ biến trong
+  <code>base.py</code> vào namespace của <code>local.py</code>, sau đó
+  <code>local.py</code> chỉ ghi đè những gì khác biệt (ở đây chỉ
+  <code>DEBUG = True</code>).</p>
+
+  <h2><code>django-environ</code>: đọc config từ <code>.env</code>, không hard-code</h2>
+  <pre><code>env("SECRET_KEY")              # bat buoc phai co trong .env, khong co -> loi
+env.bool("DEBUG", default=False)   # co gia tri mac dinh neu thieu
+env.db_url("DATABASE_URL")         # parse chuoi ket noi DB thanh dict</code></pre>
+  <p><code>env(...)</code> ở đây không phải cú pháp Python đặc biệt — nó là
+  một <strong>object</strong> (<code>env = environ.Env()</code>) mà bạn
+  gọi như một hàm nhờ dunder method <code>__call__</code>. Bạn chưa cần
+  hiểu <code>__call__</code> sâu — chỉ cần biết <code>env(...)</code> đọc
+  1 biến môi trường, khớp với file <code>.env</code> đã set ở
+  <a href="../../docs/agents/how-to-run.md">how-to-run.md</a>.</p>
+
+  <p class="sources">Nguồn chính: <a href="https://docs.djangoproject.com/en/stable/topics/settings/">Django docs — Settings</a></p>
+</main>
+</body>
+</html>

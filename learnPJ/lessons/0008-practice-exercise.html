@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 8: Bài tập thực hành tổng hợp</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 8 · Thực hành tổng hợp — 7 khái niệm</div>
+  <h1>Thực hành: viết một "Thư viện mini" bằng Python</h1>
+
+  <p>Đây không phải bài học mới — là bài tập <strong>bắt bạn tự viết
+  code</strong>, dùng lại cả 7 khái niệm từ bài 1–7. Đọc yêu cầu, tự viết
+  trong một file <code>.py</code>, chạy bằng <code>uv run python
+  ten_file.py</code> (xem <a href="../../docs/agents/how-to-run.md">how-to-run.md</a>
+  nếu quên cách chạy), rồi quay lại làm phần "dự đoán kết quả" bên dưới để
+  tự kiểm tra hiểu đúng chưa.</p>
+
+  <h2>Đề bài</h2>
+  <p>Viết một chương trình quản lý thư viện nhỏ, gồm:</p>
+  <ol>
+    <li><strong>(Bài 4 — class)</strong> Một class <code>Book</code> với
+      <code>__init__(self, title, author, available=True)</code> và một
+      method <code>info(self)</code> trả về chuỗi
+      <code>f"{self.title} by {self.author}"</code>.</li>
+    <li><strong>(Bài 5 — dict)</strong> Một <code>dict</code> tên
+      <code>library</code>, key là tiêu đề sách (str), value là object
+      <code>Book</code> tương ứng. Thêm ít nhất 3 quyển sách.</li>
+    <li><strong>(Bài 3 — function trả tuple)</strong> Một hàm
+      <code>checkout(library, title)</code>: nếu sách tồn tại và
+      <code>available == True</code>, đặt <code>available = False</code>
+      và trả về <code>(True, "checked out")</code>; nếu không tồn tại,
+      trả về <code>(False, "not found")</code>; nếu đã có người mượn, trả
+      về <code>(False, "already out")</code>.</li>
+    <li><strong>(Bài 6 — exception)</strong> Khi gọi
+      <code>checkout</code> với tiêu đề không tồn tại, thay vì trả tuple
+      lỗi, hãy đổi hàm để <code>raise ValueError</code> — rồi bọc lời gọi
+      hàm bằng <code>try/except ValueError</code> ở nơi gọi, in ra thông
+      báo lỗi thay vì để chương trình crash.</li>
+    <li><strong>(Bài 2 — comprehension)</strong> Một dòng
+      <code>list comprehension</code> lấy ra danh sách tiêu đề của tất cả
+      sách còn <code>available == True</code> trong <code>library</code>.</li>
+    <li><strong>(Bài 7 — decorator)</strong> Viết một decorator
+      <code>@log_call</code> (giống bài 7) và gắn nó lên hàm
+      <code>checkout</code>, để mỗi lần checkout đều in ra
+      <code>"goi checkout"</code> trước khi thực hiện.</li>
+  </ol>
+
+  <div class="callout">
+    Không cần dùng <code>with</code>/context manager trong bài này (không
+    có file thật để mở) — nếu muốn thử thêm, có thể ghi log ra một file
+    bằng <code>with open("log.txt", "a") as f: f.write(...)</code> bên
+    trong decorator, thay vì <code>print</code>.
+  </div>
+
+  <p>Không có "đáp án mẫu" đính kèm ở đây — hãy tự viết, tự chạy thử, rồi
+  <strong>hỏi Claude</strong> để review code của bạn khi xong. Đó là cách
+  luyện tập thật (retrieval practice) thay vì đọc code có sẵn.</p>
+
+  <h2>Dự đoán kết quả (làm sau khi đã tự viết xong)</h2>
+  <p>Ba câu dưới đây kiểm tra bạn có dự đoán đúng hành vi Python trong
+  chính bài tập trên không — không nhìn code mẫu, tự suy luận từ những gì
+  đã học ở bài 1–7.</p>
+
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. Gọi <code>checkout(library, "Ten sach khong ton tai")</code> sau khi bạn đã đổi hàm sang dùng <code>raise</code> — nếu KHÔNG bọc trong try/except, điều gì xảy ra?</p>
+      <button data-correct="false" onclick="answer(this)">In ra "not found" rồi tiếp tục</button>
+      <button data-correct="true" onclick="answer(this)">Chương trình dừng vì lỗi</button>
+      <button data-correct="false" onclick="answer(this)">Trả về None âm thầm</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. <code>[title for title, book in library.items() if book.available]</code> — cấu trúc <code>for title, book in ...</code> ở đây là gì?</p>
+      <button data-correct="false" onclick="answer(this)">Một phép so sánh</button>
+      <button data-correct="true" onclick="answer(this)">Một phép unpacking</button>
+      <button data-correct="false" onclick="answer(this)">Một type hint</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. Sau khi gắn <code>@log_call</code> lên <code>checkout</code>, gọi <code>checkout(library, "A")</code> tương đương viết lại thành gì?</p>
+      <button data-correct="false" onclick="answer(this)">checkout.log_call("A")</button>
+      <button data-correct="true" onclick="answer(this)">log_call(checkout)(library, "A")</button>
+      <button data-correct="false" onclick="answer(this)">log_call(library, "A")</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Viết xong code — dán vào chat và nhờ Claude review
+  giúp, hoặc hỏi bất cứ chỗ nào bị mắc kẹt. Đây chính là lúc câu hỏi của
+  bạn có giá trị nhất, vì nó đến từ việc tự tay viết code thật.</p>
+
+  <div class="nav">
+    <span>← <a href="0007-modules-and-decorators.html">Bài 7: Module &amp; Decorator</a></span>
+    <span>Bỏ qua hoặc đã xong: <a href="0009-django-settings-anatomy.html">Bài 9: Django Settings Anatomy</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>

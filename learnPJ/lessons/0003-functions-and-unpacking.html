@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 3: Functions &amp; Unpacking</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 3 · Python cốt lõi</div>
+  <h1>Function trong Python: không khai báo kiểu, "trả về nhiều giá trị"</h1>
+
+  <p>Function ở Python không khai báo kiểu tham số/trả về, và "trả về nhiều
+  giá trị" thực chất chỉ là <em>unpacking</em> — cơ chế bạn đã gặp ở bài 2.</p>
+
+  <h2>1. Định nghĩa hàm với <code>def</code></h2>
+  <div class="compare">
+    <div>
+      <h3>Cái bạn quen dùng</h3>
+      <pre><code>String greet(String name) {
+  return "hello, " + name;
+}</code></pre>
+    </div>
+    <div>
+      <h3>Python</h3>
+      <pre><code>def greet(name):
+    return f"hello, {name}!"
+
+print(greet("Lan"))
+# -> hello, Lan!</code></pre>
+    </div>
+  </div>
+  <p>Thân hàm là block thụt lề, không có kiểu bắt buộc. <code>name</code>
+  chỉ là tên tạm trỏ tới giá trị bất kỳ; Python chỉ báo lỗi khi thân hàm
+  <strong>dùng sai giá trị đó</strong> — đây là "duck typing".</p>
+
+  <h2>2. Giá trị mặc định cho tham số</h2>
+  <pre><code>def greet(name, greeting="hello"):
+    return f"{greeting}, {name}!"
+
+greet("world")                  # -> "hello, world!"
+greet("world", "hi")            # -> "hi, world!"
+greet("world", greeting="yo")   # -> "yo, world!"  (gọi bằng tên tham số)</code></pre>
+  <p>Gọi bằng tên tham số (<em>keyword argument</em>) giúp code tự giải
+  thích, ví dụ <code>resize(width=800, height=600)</code> rõ hơn
+  <code>resize(800, 600)</code>.</p>
+  <div class="callout">
+    <strong>Bẫy hay gặp:</strong> đừng dùng list/dict làm giá trị mặc định —
+    <code>def f(items=[])</code> — vì nó chỉ được tạo <strong>một lần</strong>
+    lúc <code>def</code> chạy rồi dùng lại cho mọi lần gọi, nên sửa list sẽ
+    "rò rỉ" sang lần gọi sau. An toàn hơn:
+    <code>def f(items=None): items = items or []</code>.
+  </div>
+
+  <h2>3. "Trả về nhiều giá trị" — thực chất là một tuple</h2>
+  <pre><code>def min_max(numbers):
+    return min(numbers), max(numbers)
+
+result = min_max([3, 1, 4, 1, 5])
+print(result)          # -> (1, 5)
+print(type(result))    # -> &lt;class 'tuple'&gt;
+
+lo, hi = min_max([3, 1, 4, 1, 5])
+print(lo, hi)           # -> 1 5</code></pre>
+  <div class="callout">
+    Một hàm Python luôn trả về đúng <strong>một</strong> giá trị:
+    <code>return a, b</code> chỉ là cách viết tắt gói <code>a</code>,
+    <code>b</code> vào tuple <code>(a, b)</code>. Rồi
+    <code>lo, hi = ...</code> unpack tuple đó ra 2 biến (giống
+    <code>enumerate()</code> ở bài 2). Quên unpack thì bạn nhận nguyên
+    tuple, không phải hai biến riêng.
+  </div>
+
+  <div style="text-align:center; margin: 1.5rem 0;">
+    <svg viewBox="0 0 460 150" width="100%" style="max-width: 30rem; height: auto;" role="img" aria-label="Sơ đồ: return a, b tạo tuple (a, b), rồi unpack thành lo và hi">
+      <defs>
+        <marker id="arrow3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" />
+        </marker>
+      </defs>
+      <rect x="10" y="15" width="140" height="40" rx="6" fill="none" stroke="var(--border)" />
+      <text x="80" y="40" text-anchor="middle" font-family="monospace" font-size="13" fill="currentColor">return a, b</text>
+
+      <line x1="150" y1="35" x2="195" y2="35" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow3)" />
+
+      <rect x="200" y="15" width="110" height="40" rx="6" fill="none" stroke="var(--accent)" />
+      <text x="255" y="40" text-anchor="middle" font-family="monospace" font-size="13" fill="currentColor">(a, b)</text>
+
+      <line x1="255" y1="55" x2="255" y2="75" stroke="currentColor" stroke-width="1.5" />
+      <line x1="140" y1="75" x2="370" y2="75" stroke="currentColor" stroke-width="1.5" />
+      <line x1="140" y1="75" x2="140" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow3)" />
+      <line x1="370" y1="75" x2="370" y2="95" stroke="currentColor" stroke-width="1.5" marker-end="url(#arrow3)" />
+
+      <rect x="90" y="100" width="100" height="38" rx="6" fill="none" stroke="var(--border)" />
+      <text x="140" y="124" text-anchor="middle" font-family="monospace" font-size="13" fill="currentColor">lo</text>
+
+      <rect x="320" y="100" width="100" height="38" rx="6" fill="none" stroke="var(--border)" />
+      <text x="370" y="124" text-anchor="middle" font-family="monospace" font-size="13" fill="currentColor">hi</text>
+    </svg>
+  </div>
+
+  <h2>4. Unpacking không chỉ dùng với hàm</h2>
+  <pre><code>point = (3, 4)
+x, y = point                  # x = 3, y = 4
+print(f"{x}, {y}")             # -> 3, 4
+
+first, *rest = [1, 2, 3, 4]
+print(first)                   # -> 1
+print(rest)                    # -> [2, 3, 4]
+
+a, *_, last = [1, 2, 3, 4, 5]
+print(a, last)                 # -> 1 5</code></pre>
+  <p><code>*rest</code> gom "phần còn lại" vào một list. <code>*_</code> là
+  quy ước đặt tên cho "phần bỏ qua, không dùng tới".</p>
+
+  <h2>5. Vì sao unpacking sai số lượng lại báo lỗi ngay?</h2>
+  <pre><code>x, y = (1, 2, 3)
+# -> ValueError: too many values to unpack (expected 2)</code></pre>
+  <p>Chủ đích thiết kế: số biến bên trái phải khớp <strong>chính xác</strong>
+  số phần tử bên phải (trừ khi có <code>*rest</code>). Đây là lớp bảo vệ duy
+  nhất chống lỗi "hàm trả về 3 giá trị nhưng chỗ gọi tưởng chỉ có 2".</p>
+
+  <h2>6. Gợi ý kiểu (type hints) — tùy chọn, chỉ để tài liệu hóa</h2>
+  <pre><code>def greet(name: str, greeting: str = "hello") -> str:
+    return f"{greeting}, {name}!"
+
+greet(123, "hi")   # vẫn chạy được, in ra "hi, 123!" — Python không chặn</code></pre>
+  <p>Python <strong>không</strong> kiểm tra hint lúc chạy — chúng chỉ giúp
+  người đọc và công cụ như <code>mypy</code> bắt lỗi sớm (xem
+  <code>uv run python -m mypy src</code> trong
+  <a href="../../docs/agents/how-to-run.md">how-to-run.md</a>).</p>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0003-functions-and-unpacking.html">Cheat sheet Functions &amp; Unpacking</a>.
+  Nguồn chính nên đọc song song: <a href="https://docs.python.org/3/tutorial/controlflow.html#defining-functions">The Python Tutorial §4.6–4.8 — Defining Functions</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. <code>return a, b</code> trong Python thực chất trả về kiểu gì?</p>
+      <button data-correct="false" onclick="answer(this)">Một mảng (array)</button>
+      <button data-correct="true" onclick="answer(this)">Một tuple (a, b)</button>
+      <button data-correct="false" onclick="answer(this)">Hai giá trị riêng</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. <code>def greet(name, greeting="hi"):</code> — gọi <code>greet("Lan")</code> thì <code>greeting</code> bằng gì?</p>
+      <button data-correct="false" onclick="answer(this)">Giá trị None</button>
+      <button data-correct="true" onclick="answer(this)">Chuỗi "hi"</button>
+      <button data-correct="false" onclick="answer(this)">Báo lỗi thiếu tham số</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. Type hint như <code>name: str</code> có được Python kiểm tra lúc chạy không?</p>
+      <button data-correct="false" onclick="answer(this)">Có, luôn kiểm tra</button>
+      <button data-correct="true" onclick="answer(this)">Không, chỉ để tài liệu hóa</button>
+      <button data-correct="false" onclick="answer(this)">Chỉ trong vòng lặp</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span>← <a href="0002-loops-and-comprehensions.html">Bài 2: Vòng lặp &amp; Comprehension</a></span>
+    <span>Tiếp theo: <a href="0004-classes-basics.html">Bài 4: Class cơ bản</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>
