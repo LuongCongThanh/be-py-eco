@@ -65,6 +65,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "common.observability.middleware.RequestIDMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -109,6 +110,13 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# common/api — envelope + Problem Details error shape (guild.md §5.3/§5.4),
+# established here so every later module reuses it unchanged.
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "common.api.exceptions.exception_handler",
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+}
 
 # Structured JSON logging (common/observability). Real Sentry DSN / Prometheus
 # scrape endpoints are out of scope for this slice — only the JSON log
