@@ -15,7 +15,9 @@ docker compose -f infra/compose/docker-compose.yml up -d
 # 3. Dependencies
 uv sync
 
-# 4. Database schema
+# 4. Confirm Django can reach Postgres, then apply the schema
+$env:DJANGO_SETTINGS_MODULE = "config.settings.local"
+uv run python manage.py check --database default
 uv run python manage.py migrate
 
 # 5. Test suite (real PostgreSQL, no SQLite — see guild.md §10.5)

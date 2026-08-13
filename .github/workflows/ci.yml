@@ -91,6 +91,9 @@ jobs:
       - name: Check lockfile is up to date
         run: uv lock --check
 
+      - name: Django database connectivity check
+        run: uv run python manage.py check --database default
+
       - name: Run tests
         run: uv run pytest
 
