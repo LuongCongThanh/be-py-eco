@@ -4,6 +4,7 @@ Every value is read from the environment via django-environ; nothing here
 hard-codes a value that would work "by accident" in production.
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -125,7 +126,25 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "common.api.exceptions.exception_handler",
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": ["common.auth.authentication.JWTAuthentication"],
 }
+
+# Customer JWTs: 10-15 min access, rotating/revocable refresh (guild.md §6.1).
+# Refresh rotation + hashed session storage land in a later commit.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+# Argon2 first — guild.md §6.1. Django tries hashers in this order and
+# upgrades existing hashes on next successful login (PBKDF2 kept as fallback
+# for verifying already-hashed passwords, not for new ones).
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
 
 # drf-spectacular — OpenAPI 3.1 schema at /api/v1/schema/, committed to
 # docs/api/openapi.yaml (guild.md §5.7). SCHEMA_PATH_PREFIX groups tags by

@@ -37,3 +37,15 @@ class CustomerResponseSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     email = serializers.EmailField()
     email_verified = serializers.BooleanField()
+
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+
+class TokenResponseSerializer(serializers.Serializer):
+    """Response shape only — used for OpenAPI docs, not for validation."""
+
+    access = serializers.CharField()
+    refresh = serializers.CharField()

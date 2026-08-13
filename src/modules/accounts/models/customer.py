@@ -30,3 +30,13 @@ class Customer(BaseModel):
     @property
     def is_email_verified(self) -> bool:
         return self.email_verified_at is not None
+
+    # Minimal shim for DRF's IsAuthenticated permission, which expects
+    # `request.user.is_authenticated` — Customer isn't AbstractBaseUser.
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def is_anonymous(self) -> bool:
+        return False

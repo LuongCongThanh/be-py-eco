@@ -4,6 +4,46 @@ info:
   version: 1.0.0
   description: E-commerce backend API for be-py-eco.
 paths:
+  /api/v1/storefront/accounts/login:
+    post:
+      operationId: storefront_accounts_login_create
+      tags:
+      - storefront
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: ''
+  /api/v1/storefront/accounts/me:
+    get:
+      operationId: storefront_accounts_me_retrieve
+      tags:
+      - storefront
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+          description: ''
   /api/v1/storefront/accounts/register:
     post:
       operationId: storefront_accounts_register_create
@@ -74,6 +114,18 @@ components:
       - email
       - email_verified
       - id
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
     Register:
       type: object
       properties:
@@ -86,6 +138,17 @@ components:
       required:
       - email
       - password
+    TokenResponse:
+      type: object
+      description: Response shape only — used for OpenAPI docs, not for validation.
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
     VerifyEmail:
       type: object
       properties:
@@ -93,3 +156,8 @@ components:
           type: string
       required:
       - token
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

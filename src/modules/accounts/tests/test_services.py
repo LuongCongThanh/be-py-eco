@@ -4,8 +4,9 @@ import pytest
 from django.core import mail
 from django.utils import timezone
 
-from modules.accounts.errors import InvalidVerificationTokenError
+from modules.accounts.errors import InvalidCredentialsError, InvalidVerificationTokenError
 from modules.accounts.models import LoginMethod, VerificationToken
+from modules.accounts.services.login_customer import login_customer
 from modules.accounts.services.register_customer import register_customer
 from modules.accounts.services.verify_email import verify_email
 
@@ -64,3 +65,28 @@ def test_verify_email_rejects_expired_token() -> None:
 
     with pytest.raises(InvalidVerificationTokenError):
         verify_email(raw_token=result.verification_token)
+
+
+@pytest.mark.django_db
+def test_login_customer_returns_tokens_for_valid_credentials() -> None:
+    result = register_customer(email="login@example.com", password="a-strong-password-123")
+
+    customer, refresh = login_customer(email="login@example.com", password="a-strong-password-123")
+
+    assert customer.id == result.customer.id
+    assert str(refresh.access_token)
+    assert str(refresh)
+
+
+@pytest.mark.django_db
+def test_login_customer_rejects_wrong_password() -> None:
+    register_customer(email="login2@example.com", password="a-strong-password-123")
+
+    with pytest.raises(InvalidCredentialsError):
+        login_customer(email="login2@example.com", password="wrong-password")
+
+
+@pytest.mark.django_db
+def test_login_customer_rejects_unknown_email() -> None:
+    with pytest.raises(InvalidCredentialsError):
+        login_customer(email="nobody@example.com", password="whatever-123")
