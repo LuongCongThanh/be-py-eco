@@ -25,7 +25,7 @@ from modules.accounts.api.storefront.serializers import TokenResponseSerializer
 from modules.accounts.models import Staff
 from modules.accounts.services.create_staff import create_staff
 from modules.accounts.services.disable_customer import disable_customer
-from modules.accounts.services.mfa import confirm_mfa_setup, start_mfa_setup
+from modules.accounts.services.mfa import confirm_mfa_setup, reset_staff_mfa, start_mfa_setup
 from modules.accounts.services.staff_login import login_staff
 
 
@@ -83,4 +83,14 @@ class DisableCustomerView(APIView):
     @extend_schema(request=None, responses={204: None})
     def post(self, request: Request, customer_id: UUID) -> Response:
         disable_customer(actor=cast(Staff, request.user), customer_id=customer_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ResetStaffMfaView(APIView):
+    permission_classes = [IsAuthenticated, IsStaff]
+
+    @extend_schema(request=None, responses={204: None})
+    def post(self, request: Request, staff_id: UUID) -> Response:
+        target_staff = Staff.objects.get(id=staff_id)
+        reset_staff_mfa(actor=cast(Staff, request.user), target_staff=target_staff)
         return Response(status=status.HTTP_204_NO_CONTENT)

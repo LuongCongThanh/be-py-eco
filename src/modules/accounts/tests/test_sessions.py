@@ -11,6 +11,7 @@ from modules.accounts.services.sessions import (
     revoke_session,
     rotate_refresh_token,
 )
+from modules.audit.models import AuditLogEntry
 
 
 @pytest.mark.django_db
@@ -63,6 +64,19 @@ def test_revoke_session_marks_it_revoked() -> None:
 
     session.refresh_from_db()
     assert session.revoked_at is not None
+
+
+@pytest.mark.django_db
+def test_revoke_session_writes_an_audit_log_entry() -> None:
+    result = register_customer(email="auditsession@example.com", password="a-strong-password-123")
+    issue_session(result.customer)
+    session = Session.objects.get(customer=result.customer)
+
+    revoke_session(customer=result.customer, session_id=session.id)
+
+    entry = AuditLogEntry.objects.get(action="accounts.revoke_session", resource_id=str(session.id))
+    assert entry.actor_type == "customer"
+    assert entry.actor_id == str(result.customer.id)
 
 
 @pytest.mark.django_db

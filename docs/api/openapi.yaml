@@ -47,6 +47,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/StaffResponse'
           description: ''
+  /api/v1/admin/staff/{staff_id}/mfa/reset:
+    post:
+      operationId: admin_staff_mfa_reset_create
+      parameters:
+      - in: path
+        name: staff_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/admin/staff/login:
     post:
       operationId: admin_staff_login_create

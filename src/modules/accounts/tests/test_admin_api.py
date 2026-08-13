@@ -3,6 +3,7 @@ Issue #6 commit 11's verify criterion.
 """
 
 import base64
+from binascii import unhexlify
 from typing import cast
 
 import pytest
@@ -11,6 +12,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from modules.accounts.models import Staff
+from modules.accounts.services.mfa import confirm_mfa_setup, start_mfa_setup
 from modules.accounts.tests.factories import StaffFactory
 
 
@@ -125,3 +127,20 @@ def test_customer_jwt_cannot_call_admin_endpoints(api_client: APIClient) -> None
     )
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+def test_master_admin_resets_a_staff_members_mfa(api_client: APIClient) -> None:
+    master_admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN))
+    target = cast(Staff, StaffFactory(role=Staff.Role.ORDER_STAFF))
+    device, _ = start_mfa_setup(staff=target)
+    confirm_mfa_setup(staff=target, token=str(totp(unhexlify(device.key))).zfill(6))
+
+    admin_tokens = _staff_login(api_client, master_admin.email, "a-strong-password-123")
+    admin_auth = {"Authorization": f"Bearer {admin_tokens['access']}"}
+
+    response = api_client.post(f"/api/v1/admin/staff/{target.id}/mfa/reset", headers=admin_auth)
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    target.refresh_from_db()
+    assert target.has_confirmed_mfa is False

@@ -10,6 +10,7 @@ from modules.accounts.services.disable_customer import disable_customer
 from modules.accounts.services.mfa import confirm_mfa_setup, start_mfa_setup
 from modules.accounts.services.register_customer import register_customer
 from modules.accounts.tests.factories import StaffFactory
+from modules.audit.models import AuditLogEntry
 
 
 def _confirm_mfa(staff: Staff) -> None:
@@ -36,6 +37,11 @@ def test_disable_customer_succeeds_once_mfa_is_confirmed() -> None:
     customer = disable_customer(actor=manager, customer_id=result.customer.id)
 
     assert customer.is_active is False
+    entry = AuditLogEntry.objects.get(
+        action="accounts.disable_customer", resource_id=str(customer.id)
+    )
+    assert entry.actor_type == "staff"
+    assert entry.actor_id == str(manager.id)
 
 
 @pytest.mark.django_db

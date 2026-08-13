@@ -17,6 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from common.auth.authentication import ACTOR_TYPE_CLAIM, CUSTOMER_ACTOR_TYPE
 from modules.accounts.errors import InvalidRefreshTokenError, SessionNotFoundError
 from modules.accounts.models import Customer, Session
+from modules.audit.services.write_audit_log import write_audit_log
 
 
 def _hash_jti(jti: str) -> str:
@@ -66,14 +67,33 @@ def rotate_refresh_token(*, raw_refresh_token: str) -> tuple[str, str]:
 
 
 def revoke_session(*, customer: Customer, session_id: UUID) -> None:
+    """A Customer revoking their own session — a sensitive action
+    (guild.md §6.2), audited."""
     updated = Session.objects.filter(
         id=session_id, customer=customer, revoked_at__isnull=True
     ).update(revoked_at=timezone.now())
     if not updated:
         raise SessionNotFoundError
 
+    write_audit_log(
+        actor_type="customer",
+        actor_id=str(customer.id),
+        action="accounts.revoke_session",
+        resource_type="session",
+        resource_id=str(session_id),
+        before={"revoked_at": None},
+        after={"revoked_at": "now"},
+    )
+
 
 def revoke_all_sessions(*, customer: Customer) -> None:
+    """Revokes every active session for `customer`. Shared by the
+    Customer's own self-service "revoke all" action and by
+    disable_customer (a different actor) — not audited here itself since
+    the actor differs by caller; disable_customer's own audit entry
+    already covers that path, and the self-service caller isn't named in
+    Issue #6 commit 14's scope (only single-session revoke is).
+    """
     Session.objects.filter(customer=customer, revoked_at__isnull=True).update(
         revoked_at=timezone.now()
     )

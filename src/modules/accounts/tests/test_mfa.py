@@ -4,10 +4,11 @@ from typing import cast
 import pytest
 from django_otp.oath import totp
 
-from modules.accounts.errors import InvalidMfaTokenError
+from modules.accounts.errors import InsufficientPermissionError, InvalidMfaTokenError
 from modules.accounts.models import Staff, StaffTOTPDevice
-from modules.accounts.services.mfa import confirm_mfa_setup, start_mfa_setup
+from modules.accounts.services.mfa import confirm_mfa_setup, reset_staff_mfa, start_mfa_setup
 from modules.accounts.tests.factories import StaffFactory
+from modules.audit.models import AuditLogEntry
 
 
 def _current_code(device: StaffTOTPDevice) -> str:
@@ -55,3 +56,28 @@ def test_confirm_mfa_setup_without_a_device_raises() -> None:
 
     with pytest.raises(InvalidMfaTokenError):
         confirm_mfa_setup(staff=staff, token="123456")
+
+
+@pytest.mark.django_db
+def test_reset_staff_mfa_deletes_the_device_and_writes_an_audit_log_entry() -> None:
+    admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN))
+    target = cast(Staff, StaffFactory(role=Staff.Role.ORDER_STAFF))
+    device, _ = start_mfa_setup(staff=target)
+    confirm_mfa_setup(staff=target, token=_current_code(device))
+
+    reset_staff_mfa(actor=admin, target_staff=target)
+
+    assert StaffTOTPDevice.objects.filter(staff=target).exists() is False
+    entry = AuditLogEntry.objects.get(action="accounts.reset_staff_mfa", resource_id=str(target.id))
+    assert entry.actor_id == str(admin.id)
+    assert entry.before == {"mfa_confirmed": True}
+    assert entry.after == {"mfa_confirmed": False}
+
+
+@pytest.mark.django_db
+def test_reset_staff_mfa_denied_for_non_master_admin() -> None:
+    manager = cast(Staff, StaffFactory(role=Staff.Role.STORE_MANAGER))
+    target = cast(Staff, StaffFactory(role=Staff.Role.ORDER_STAFF))
+
+    with pytest.raises(InsufficientPermissionError):
+        reset_staff_mfa(actor=manager, target_staff=target)

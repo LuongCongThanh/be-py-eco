@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "django_countries",
     "storages",
     "modules.accounts",
+    "modules.audit",
     "modules.localization",
 ]
 
