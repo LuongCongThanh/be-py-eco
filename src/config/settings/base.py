@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "django_celery_beat",
     "storages",
 ]
@@ -116,6 +117,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "common.api.exceptions.exception_handler",
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# drf-spectacular — OpenAPI 3.1 schema at /api/v1/schema/, committed to
+# docs/api/openapi.yaml (guild.md §5.7). SCHEMA_PATH_PREFIX groups tags by
+# the first path segment after the version, e.g. /api/v1/storefront/products.
+SPECTACULAR_SETTINGS = {
+    "TITLE": "be-py-eco API",
+    "DESCRIPTION": "E-commerce backend API for be-py-eco.",
+    "VERSION": "1.0.0",
+    "OAS_VERSION": "3.1.0",
+    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 # Structured JSON logging (common/observability). Real Sentry DSN / Prometheus

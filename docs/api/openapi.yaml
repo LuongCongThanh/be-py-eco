@@ -1,0 +1,7 @@
+openapi: 3.1.0
+info:
+  title: be-py-eco API
+  version: 1.0.0
+  description: E-commerce backend API for be-py-eco.
+paths: {}
+components: {}
