@@ -9,11 +9,23 @@ import base64
 from django.utils import timezone
 
 from common.auth.permissions import check_policy
-from modules.accounts.errors import InsufficientPermissionError, InvalidMfaTokenError
+from modules.accounts.errors import (
+    InsufficientPermissionError,
+    InvalidMfaTokenError,
+    MfaNotConfiguredError,
+)
 from modules.accounts.models import Staff, StaffTOTPDevice
 from modules.audit.services.write_audit_log import write_audit_log
 
 RESET_STAFF_MFA_CODENAME = "accounts.reset_staff_mfa"
+
+
+def require_confirmed_mfa(staff: Staff) -> None:
+    """Guards every sensitive action (guild.md §3.1 "MFA bắt buộc cho mọi
+    staff"; §6.2: a staff account without MFA configured cannot
+    successfully call a sensitive action endpoint)."""
+    if not staff.has_confirmed_mfa:
+        raise MfaNotConfiguredError
 
 
 def start_mfa_setup(*, staff: Staff) -> tuple[StaffTOTPDevice, str]:
@@ -44,6 +56,7 @@ def reset_staff_mfa(*, actor: Staff, target_staff: Staff) -> None:
     """
     if not check_policy(role=actor.role, codename=RESET_STAFF_MFA_CODENAME):
         raise InsufficientPermissionError
+    require_confirmed_mfa(actor)
 
     had_confirmed_mfa = target_staff.has_confirmed_mfa
     StaffTOTPDevice.objects.filter(staff=target_staff).delete()

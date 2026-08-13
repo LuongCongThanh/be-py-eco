@@ -98,6 +98,7 @@ class LoginView(APIView):
 class GoogleLoginView(APIView):
     authentication_classes: list[type[BaseAuthentication]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthIPRateThrottle]
 
     @extend_schema(request=GoogleLoginSerializer, responses=TokenResponseSerializer)
     def post(self, request: Request) -> Response:

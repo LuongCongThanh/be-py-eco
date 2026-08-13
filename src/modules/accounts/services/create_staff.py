@@ -9,6 +9,7 @@ from django.contrib.auth.hashers import make_password
 from common.auth.permissions import check_policy
 from modules.accounts.errors import InsufficientPermissionError
 from modules.accounts.models import Staff
+from modules.accounts.services.mfa import require_confirmed_mfa
 from modules.audit.services.write_audit_log import write_audit_log
 
 CREATE_STAFF_CODENAME = "accounts.create_staff"
@@ -17,6 +18,7 @@ CREATE_STAFF_CODENAME = "accounts.create_staff"
 def create_staff(*, actor: Staff, email: str, password: str, role: str) -> Staff:
     if not check_policy(role=actor.role, codename=CREATE_STAFF_CODENAME):
         raise InsufficientPermissionError
+    require_confirmed_mfa(actor)
 
     staff = Staff.objects.create(
         email=email.strip().lower(),

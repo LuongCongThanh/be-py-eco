@@ -39,7 +39,7 @@ def _code_from_provisioning_uri(provisioning_uri: str) -> str:
 def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
     api_client: APIClient,
 ) -> None:
-    master_admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN))
+    master_admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN, mfa_confirmed=True))
     admin_tokens = _staff_login(api_client, master_admin.email, "a-strong-password-123")
     admin_auth = {"Authorization": f"Bearer {admin_tokens['access']}"}
 
@@ -131,7 +131,7 @@ def test_customer_jwt_cannot_call_admin_endpoints(api_client: APIClient) -> None
 
 @pytest.mark.django_db
 def test_master_admin_resets_a_staff_members_mfa(api_client: APIClient) -> None:
-    master_admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN))
+    master_admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN, mfa_confirmed=True))
     target = cast(Staff, StaffFactory(role=Staff.Role.ORDER_STAFF))
     device, _ = start_mfa_setup(staff=target)
     confirm_mfa_setup(staff=target, token=str(totp(unhexlify(device.key))).zfill(6))

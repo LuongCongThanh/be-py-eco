@@ -4,7 +4,11 @@ from typing import cast
 import pytest
 from django_otp.oath import totp
 
-from modules.accounts.errors import InsufficientPermissionError, InvalidMfaTokenError
+from modules.accounts.errors import (
+    InsufficientPermissionError,
+    InvalidMfaTokenError,
+    MfaNotConfiguredError,
+)
 from modules.accounts.models import Staff, StaffTOTPDevice
 from modules.accounts.services.mfa import confirm_mfa_setup, reset_staff_mfa, start_mfa_setup
 from modules.accounts.tests.factories import StaffFactory
@@ -60,7 +64,7 @@ def test_confirm_mfa_setup_without_a_device_raises() -> None:
 
 @pytest.mark.django_db
 def test_reset_staff_mfa_deletes_the_device_and_writes_an_audit_log_entry() -> None:
-    admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN))
+    admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN, mfa_confirmed=True))
     target = cast(Staff, StaffFactory(role=Staff.Role.ORDER_STAFF))
     device, _ = start_mfa_setup(staff=target)
     confirm_mfa_setup(staff=target, token=_current_code(device))
@@ -81,3 +85,12 @@ def test_reset_staff_mfa_denied_for_non_master_admin() -> None:
 
     with pytest.raises(InsufficientPermissionError):
         reset_staff_mfa(actor=manager, target_staff=target)
+
+
+@pytest.mark.django_db
+def test_reset_staff_mfa_blocked_until_actors_own_mfa_is_set_up() -> None:
+    admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN))  # no mfa_confirmed
+    target = cast(Staff, StaffFactory(role=Staff.Role.ORDER_STAFF))
+
+    with pytest.raises(MfaNotConfiguredError):
+        reset_staff_mfa(actor=admin, target_staff=target)
