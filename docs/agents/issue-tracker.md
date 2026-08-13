@@ -15,7 +15,10 @@ Infer the repository from `git remote -v`.
 
 ## Pull requests as a triage surface
 
-**PRs as a request surface: no.**
+PRs are not used for triage or request intake — only GitHub issues are. A PR
+exists solely to ship code/docs for work already tracked by an issue (see
+`docs/agents/git-workflow.md`); it should link back with `Closes #<number>`,
+not introduce new scope of its own.
 
 ## Skill conventions
 
