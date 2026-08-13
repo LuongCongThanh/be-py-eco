@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_countries",
     "storages",
+    "modules.accounts",
     "modules.localization",
 ]
 
@@ -113,6 +114,10 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Placeholder transactional email — templated/localized send is Slice 7.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@be-py-eco.local")
 
 # common/api — envelope + Problem Details error shape (guild.md §5.3/§5.4),
 # established here so every later module reuses it unchanged.

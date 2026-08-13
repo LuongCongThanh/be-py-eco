@@ -3,5 +3,93 @@ info:
   title: be-py-eco API
   version: 1.0.0
   description: E-commerce backend API for be-py-eco.
-paths: {}
-components: {}
+paths:
+  /api/v1/storefront/accounts/register:
+    post:
+      operationId: storefront_accounts_register_create
+      tags:
+      - storefront
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Register'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Register'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+          description: ''
+  /api/v1/storefront/accounts/verify-email:
+    post:
+      operationId: storefront_accounts_verify_email_create
+      tags:
+      - storefront
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerifyEmail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerifyEmail'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerResponse'
+          description: ''
+components:
+  schemas:
+    CustomerResponse:
+      type: object
+      description: Response shape only — used for OpenAPI docs, not for validation.
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+      required:
+      - email
+      - email_verified
+      - id
+    Register:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+    VerifyEmail:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+      - token

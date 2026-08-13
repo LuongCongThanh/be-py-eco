@@ -7,3 +7,4 @@ Django's test runner creates a dedicated `test_<NAME>` database from the
 from .base import *  # noqa: F403
 
 DEBUG = False
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
