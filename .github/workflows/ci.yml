@@ -102,3 +102,23 @@ jobs:
 
       - name: Type check (mypy)
         run: uv run mypy src
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: uv run pip-audit
+
+      - name: Static security scan (bandit)
+        run: uv run bandit -r src
+
+      - name: Secret scan (detect-secrets)
+        run: |
+          uv run detect-secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' > /tmp/secrets-scan.json
+          uv run python -c "
+          import json, sys
+          baseline = json.load(open('.secrets.baseline'))['results']
+          current = json.load(open('/tmp/secrets-scan.json'))['results']
+          new_files = set(current) - set(baseline)
+          if new_files:
+              print('New unaudited secret findings in:', new_files)
+              sys.exit(1)
+          print('No new unaudited secret findings.')
+          "

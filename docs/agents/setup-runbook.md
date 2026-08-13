@@ -360,12 +360,16 @@ on GitHub Actions.
 
 ## Step 15 — Add supply-chain and secret-scanning gates to CI
 
-Add `pip-audit`, `bandit`, `detect-secrets` steps to `ci.yml`. Generate `.secrets.baseline`.
+Add `pip-audit`, `bandit`, `detect-secrets` steps to `ci.yml`. Generate `.secrets.baseline`,
+excluding the vendored `.agents`/`.claude` skill docs (same reason as the ruff
+exclude in Step 7 — their example assets trip false positives) and mark any
+remaining findings (dev-only placeholder credentials in `.env.example`/`ci.yml`)
+as audited (`is_secret: false`) in the baseline.
 
 ```powershell
-uv run pip-audit
-uv run bandit -r src
-uv run detect-secrets scan > .secrets.baseline
+uv run python -m pip_audit
+uv run python -m bandit -r src
+uv run python -m detect_secrets scan --exclude-files '\.venv' --exclude-files '\.agents' --exclude-files '\.claude' > .secrets.baseline
 ```
 
 **Check**: no unaddressed high-severity finding; CI stays green after pushing.
