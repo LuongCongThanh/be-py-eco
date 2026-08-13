@@ -67,3 +67,9 @@ class InvalidMfaTokenError(APIException):
     status_code = HTTP_400_BAD_REQUEST
     default_detail = "Invalid MFA token."
     default_code = "accounts.invalid_mfa_token"
+
+
+class ReasonRequiredError(APIException):
+    status_code = HTTP_400_BAD_REQUEST
+    default_detail = "A reason is required for this action."
+    default_code = "accounts.reason_required"

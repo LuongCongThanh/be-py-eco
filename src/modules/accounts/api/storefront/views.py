@@ -169,7 +169,9 @@ class SessionRevokeView(APIView):
 
     @extend_schema(request=None, responses={204: None})
     def post(self, request: Request, session_id: UUID) -> Response:
-        revoke_session(customer=cast(Customer, request.user), session_id=session_id)
+        revoke_session(
+            customer=cast(Customer, request.user), session_id=session_id, request=request
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -8,6 +8,7 @@ access/refresh pair is issued.
 from __future__ import annotations
 
 import hashlib
+from typing import Any
 from uuid import UUID
 
 from django.utils import timezone
@@ -15,6 +16,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from common.auth.authentication import ACTOR_TYPE_CLAIM, CUSTOMER_ACTOR_TYPE
+from common.observability.request_context import client_ip, request_id
 from modules.accounts.errors import InvalidRefreshTokenError, SessionNotFoundError
 from modules.accounts.models import Customer, Session
 from modules.audit.services.write_audit_log import write_audit_log
@@ -66,7 +68,7 @@ def rotate_refresh_token(*, raw_refresh_token: str) -> tuple[str, str]:
     return issue_session(session.customer)
 
 
-def revoke_session(*, customer: Customer, session_id: UUID) -> None:
+def revoke_session(*, customer: Customer, session_id: UUID, request: Any = None) -> None:
     """A Customer revoking their own session — a sensitive action
     (guild.md §6.2), audited."""
     updated = Session.objects.filter(
@@ -83,6 +85,8 @@ def revoke_session(*, customer: Customer, session_id: UUID) -> None:
         resource_id=str(session_id),
         before={"revoked_at": None},
         after={"revoked_at": "now"},
+        ip_address=client_ip(request),
+        request_id=request_id(request),
     )
 
 

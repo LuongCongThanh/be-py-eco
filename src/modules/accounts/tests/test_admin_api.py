@@ -14,6 +14,7 @@ from rest_framework.test import APIClient
 from modules.accounts.models import Staff
 from modules.accounts.services.mfa import confirm_mfa_setup, start_mfa_setup
 from modules.accounts.tests.factories import StaffFactory
+from modules.audit.models import AuditLogEntry
 
 
 @pytest.fixture
@@ -54,6 +55,9 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
         headers=admin_auth,
     )
     assert create_response.status_code == status.HTTP_201_CREATED
+    audit_entry = AuditLogEntry.objects.get(action="accounts.create_staff")
+    assert audit_entry.ip_address  # populated from the real HTTP request, not None
+    assert audit_entry.request_id
 
     manager_tokens = _staff_login(api_client, "newmanager@example.com", "a-strong-password-123")
     manager_auth = {"Authorization": f"Bearer {manager_tokens['access']}"}
@@ -66,7 +70,10 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
     customer_id = register_response.json()["data"]["id"]
 
     blocked_response = api_client.post(
-        f"/api/v1/admin/customers/{customer_id}/disable", headers=manager_auth
+        f"/api/v1/admin/customers/{customer_id}/disable",
+        {"reason": "Confirmed fraud report"},
+        format="json",
+        headers=manager_auth,
     )
     assert blocked_response.status_code == status.HTTP_403_FORBIDDEN
     assert blocked_response.json()["code"] == "accounts.mfa_not_configured"
@@ -82,7 +89,10 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
     assert confirm_response.status_code == status.HTTP_204_NO_CONTENT
 
     allowed_response = api_client.post(
-        f"/api/v1/admin/customers/{customer_id}/disable", headers=manager_auth
+        f"/api/v1/admin/customers/{customer_id}/disable",
+        {"reason": "Confirmed fraud report"},
+        format="json",
+        headers=manager_auth,
     )
     assert allowed_response.status_code == status.HTTP_204_NO_CONTENT
 

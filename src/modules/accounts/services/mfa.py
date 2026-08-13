@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import base64
+from typing import Any
 
 from django.utils import timezone
 
 from common.auth.permissions import check_policy
+from common.observability.request_context import client_ip, request_id
 from modules.accounts.errors import (
     InsufficientPermissionError,
     InvalidMfaTokenError,
@@ -50,7 +52,7 @@ def confirm_mfa_setup(*, staff: Staff, token: str) -> StaffTOTPDevice:
     return device
 
 
-def reset_staff_mfa(*, actor: Staff, target_staff: Staff) -> None:
+def reset_staff_mfa(*, actor: Staff, target_staff: Staff, request: Any = None) -> None:
     """Master Admin resets a Staff's MFA device (e.g. a lost device),
     forcing re-enrollment. A sensitive action (guild.md §6.2) — audited.
     """
@@ -69,6 +71,8 @@ def reset_staff_mfa(*, actor: Staff, target_staff: Staff) -> None:
         resource_id=str(target_staff.id),
         before={"mfa_confirmed": had_confirmed_mfa},
         after={"mfa_confirmed": False},
+        ip_address=client_ip(request),
+        request_id=request_id(request),
     )
 
 

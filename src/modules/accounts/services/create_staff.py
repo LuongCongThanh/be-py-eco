@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from django.contrib.auth.hashers import make_password
 
 from common.auth.permissions import check_policy
+from common.observability.request_context import client_ip, request_id
 from modules.accounts.errors import InsufficientPermissionError
 from modules.accounts.models import Staff
 from modules.accounts.services.mfa import require_confirmed_mfa
@@ -15,7 +18,9 @@ from modules.audit.services.write_audit_log import write_audit_log
 CREATE_STAFF_CODENAME = "accounts.create_staff"
 
 
-def create_staff(*, actor: Staff, email: str, password: str, role: str) -> Staff:
+def create_staff(
+    *, actor: Staff, email: str, password: str, role: str, request: Any = None
+) -> Staff:
     if not check_policy(role=actor.role, codename=CREATE_STAFF_CODENAME):
         raise InsufficientPermissionError
     require_confirmed_mfa(actor)
@@ -34,5 +39,7 @@ def create_staff(*, actor: Staff, email: str, password: str, role: str) -> Staff
         resource_id=str(staff.id),
         before={},
         after={"email": staff.email, "role": staff.role},
+        ip_address=client_ip(request),
+        request_id=request_id(request),
     )
     return staff

@@ -41,3 +41,7 @@ class MfaSetupResponseSerializer(serializers.Serializer):
 
 class ConfirmMfaSerializer(serializers.Serializer):
     token = serializers.CharField()
+
+
+class DisableCustomerSerializer(serializers.Serializer):
+    reason = serializers.CharField()

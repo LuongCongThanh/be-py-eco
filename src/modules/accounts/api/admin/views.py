@@ -16,6 +16,7 @@ from common.api.throttling import AuthAccountRateThrottle, AuthIPRateThrottle, A
 from modules.accounts.api.admin.serializers import (
     ConfirmMfaSerializer,
     CreateStaffSerializer,
+    DisableCustomerSerializer,
     MfaSetupResponseSerializer,
     StaffLoginSerializer,
     StaffResponseSerializer,
@@ -50,7 +51,9 @@ class CreateStaffView(APIView):
     def post(self, request: Request) -> Response:
         serializer = CreateStaffSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        staff = create_staff(actor=cast(Staff, request.user), **serializer.validated_data)
+        staff = create_staff(
+            actor=cast(Staff, request.user), request=request, **serializer.validated_data
+        )
         data = {"id": str(staff.id), "email": staff.email, "role": staff.role}
         return Response(success_envelope(data, request=request), status=status.HTTP_201_CREATED)
 
@@ -80,9 +83,16 @@ class MfaConfirmView(APIView):
 class DisableCustomerView(APIView):
     permission_classes = [IsAuthenticated, IsStaff]
 
-    @extend_schema(request=None, responses={204: None})
+    @extend_schema(request=DisableCustomerSerializer, responses={204: None})
     def post(self, request: Request, customer_id: UUID) -> Response:
-        disable_customer(actor=cast(Staff, request.user), customer_id=customer_id)
+        serializer = DisableCustomerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        disable_customer(
+            actor=cast(Staff, request.user),
+            customer_id=customer_id,
+            reason=serializer.validated_data["reason"],
+            request=request,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -92,5 +102,5 @@ class ResetStaffMfaView(APIView):
     @extend_schema(request=None, responses={204: None})
     def post(self, request: Request, staff_id: UUID) -> Response:
         target_staff = Staff.objects.get(id=staff_id)
-        reset_staff_mfa(actor=cast(Staff, request.user), target_staff=target_staff)
+        reset_staff_mfa(actor=cast(Staff, request.user), target_staff=target_staff, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
