@@ -4,6 +4,111 @@ info:
   version: 1.0.0
   description: E-commerce backend API for be-py-eco.
 paths:
+  /api/v1/admin/customers/{customer_id}/disable:
+    post:
+      operationId: admin_customers_disable_create
+      parameters:
+      - in: path
+        name: customer_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/admin/staff:
+    post:
+      operationId: admin_staff_create
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStaff'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateStaff'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateStaff'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffResponse'
+          description: ''
+  /api/v1/admin/staff/login:
+    post:
+      operationId: admin_staff_login_create
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffLogin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StaffLogin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffLogin'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+          description: ''
+  /api/v1/admin/staff/mfa/confirm:
+    post:
+      operationId: admin_staff_mfa_confirm_create
+      tags:
+      - admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmMfa'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConfirmMfa'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConfirmMfa'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/admin/staff/mfa/setup:
+    post:
+      operationId: admin_staff_mfa_setup_create
+      tags:
+      - admin
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaSetupResponse'
+          description: ''
   /api/v1/storefront/accounts/email-change/confirm:
     post:
       operationId: storefront_accounts_email_change_confirm_create
@@ -296,6 +401,13 @@ components:
           type: string
       required:
       - token
+    ConfirmMfa:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+      - token
     ConfirmPasswordReset:
       type: object
       properties:
@@ -307,6 +419,21 @@ components:
       required:
       - new_password
       - token
+    CreateStaff:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+      required:
+      - email
+      - password
+      - role
     CustomerResponse:
       type: object
       description: Response shape only — used for OpenAPI docs, not for validation.
@@ -342,6 +469,14 @@ components:
       required:
       - email
       - password
+    MfaSetupResponse:
+      type: object
+      description: Response shape only — used for OpenAPI docs, not for validation.
+      properties:
+        provisioning_uri:
+          type: string
+      required:
+      - provisioning_uri
     RefreshToken:
       type: object
       properties:
@@ -377,6 +512,16 @@ components:
           format: email
       required:
       - email
+    RoleEnum:
+      enum:
+      - master_admin
+      - store_manager
+      - order_staff
+      type: string
+      description: |-
+        * `master_admin` - Master Admin
+        * `store_manager` - Store Manager
+        * `order_staff` - Order Staff
     SessionResponse:
       type: object
       description: Response shape only — used for OpenAPI docs, not for validation.
@@ -394,6 +539,34 @@ components:
       - created_at
       - expires_at
       - id
+    StaffLogin:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+    StaffResponse:
+      type: object
+      description: Response shape only — used for OpenAPI docs, not for validation.
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+      required:
+      - email
+      - id
+      - role
     TokenResponse:
       type: object
       description: Response shape only — used for OpenAPI docs, not for validation.

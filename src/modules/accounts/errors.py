@@ -9,6 +9,7 @@ from rest_framework.exceptions import APIException
 from rest_framework.status import (
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_409_CONFLICT,
 )
@@ -48,3 +49,21 @@ class EmailAlreadyTakenError(APIException):
     status_code = HTTP_409_CONFLICT
     default_detail = "This email is already used by another account."
     default_code = "accounts.email_already_taken"
+
+
+class InsufficientPermissionError(APIException):
+    status_code = HTTP_403_FORBIDDEN
+    default_detail = "You do not have permission to perform this action."
+    default_code = "accounts.insufficient_permission"
+
+
+class MfaNotConfiguredError(APIException):
+    status_code = HTTP_403_FORBIDDEN
+    default_detail = "Multi-factor authentication must be set up before performing this action."
+    default_code = "accounts.mfa_not_configured"
+
+
+class InvalidMfaTokenError(APIException):
+    status_code = HTTP_400_BAD_REQUEST
+    default_detail = "Invalid MFA token."
+    default_code = "accounts.invalid_mfa_token"

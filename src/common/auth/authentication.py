@@ -8,13 +8,26 @@ actor up in the right table based on the token's `actor_type` claim.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from rest_framework_simplejwt.authentication import JWTAuthentication as BaseJWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.settings import api_settings
-from rest_framework_simplejwt.tokens import Token
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken, Token
 
 ACTOR_TYPE_CLAIM = "actor_type"
 CUSTOMER_ACTOR_TYPE = "customer"
+STAFF_ACTOR_TYPE = "staff"
+
+
+class StaffAccessToken(AccessToken):
+    # Shorter-lived than Customer's (guild.md §6.1 "Staff session ngắn hơn").
+    lifetime = timedelta(minutes=10)
+
+
+class StaffRefreshToken(RefreshToken):
+    lifetime = timedelta(days=7)
+    access_token_class = StaffAccessToken
 
 
 class JWTAuthentication(BaseJWTAuthentication):
@@ -31,5 +44,13 @@ class JWTAuthentication(BaseJWTAuthentication):
                 return Customer.objects.get(id=actor_id, is_active=True)
             except Customer.DoesNotExist:
                 raise InvalidToken("No active customer found for the given token.") from None
+
+        if actor_type == STAFF_ACTOR_TYPE:
+            from modules.accounts.models import Staff
+
+            try:
+                return Staff.objects.get(id=actor_id, is_active=True)
+            except Staff.DoesNotExist:
+                raise InvalidToken("No active staff found for the given token.") from None
 
         raise InvalidToken("Token is missing a recognized actor_type claim.")

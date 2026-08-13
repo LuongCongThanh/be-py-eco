@@ -8,6 +8,7 @@ from common.observability import health
 urlpatterns: list[URLPattern | URLResolver] = [
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/v1/storefront/accounts/", include("modules.accounts.api.storefront.urls")),
+    path("api/v1/admin/", include("modules.accounts.api.admin.urls")),
     path("health/live", health.live, name="health-live"),
     path("health/ready", health.ready, name="health-ready"),
 ]

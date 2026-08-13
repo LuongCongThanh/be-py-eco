@@ -17,8 +17,8 @@ STORE_MANAGER = "store_manager"
 ORDER_STAFF = "order_staff"
 
 ROLE_PERMISSIONS: dict[str, set[str]] = {
-    MASTER_ADMIN: set(),
-    STORE_MANAGER: set(),
+    MASTER_ADMIN: {"accounts.create_staff", "accounts.disable_customer"},
+    STORE_MANAGER: {"accounts.disable_customer"},
     ORDER_STAFF: set(),
 }
 
