@@ -33,3 +33,32 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class IdempotencyRecord(BaseModel):
+    """Backs common/db/idempotency.py — guild.md §3.10/§6.2/§12.4. Defined
+    here (not in idempotency.py) so Django's app model auto-discovery
+    (`<app>/models.py`) picks it up.
+    """
+
+    actor_type = models.CharField(max_length=20)
+    actor_id = models.CharField(max_length=64)
+    action = models.CharField(max_length=100)
+    idempotency_key = models.CharField(max_length=255)
+    request_hash = models.CharField(max_length=64)
+    response_status = models.PositiveSmallIntegerField()
+    response_body = models.JSONField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        app_label = "common_db"
+        db_table = "idempotency_record"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["actor_type", "actor_id", "action", "idempotency_key"],
+                name="unique_idempotency_key_per_actor_action",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.action}:{self.idempotency_key}"

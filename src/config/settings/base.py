@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_countries",
     "storages",
+    "common.db",
     "modules.accounts",
     "modules.audit",
     "modules.localization",

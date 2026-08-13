@@ -42,7 +42,10 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
 ) -> None:
     master_admin = cast(Staff, StaffFactory(role=Staff.Role.MASTER_ADMIN, mfa_confirmed=True))
     admin_tokens = _staff_login(api_client, master_admin.email, "a-strong-password-123")
-    admin_auth = {"Authorization": f"Bearer {admin_tokens['access']}"}
+    admin_auth = {
+        "Authorization": f"Bearer {admin_tokens['access']}",
+        "Idempotency-Key": "create-staff-1",
+    }
 
     create_response = api_client.post(
         "/api/v1/admin/staff",
