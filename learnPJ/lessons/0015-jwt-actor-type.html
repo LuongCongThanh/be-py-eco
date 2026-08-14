@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 15: JWT và actor_type</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 15 · Django/DRF nâng cao (be-py-eco)</div>
+  <h1>Một JWT, hai loại actor — vì sao PR #19 không dùng AUTH_USER_MODEL</h1>
+
+  <p>Bài 9-12 đã dùng Django "mặc định" (settings, ORM, DRF views cơ bản).
+  PR #19 (Slice 1: Accounts) lại <strong>không</strong> dùng
+  <code>AUTH_USER_MODEL</code> của Django cho khách hàng/nhân viên — bài
+  này giải thích quyết định đó và cách JWT tự chế thay thế nó.</p>
+
+  <h2>1. Django "mặc định" làm gì, be-py-eco làm khác gì</h2>
+  <div class="compare">
+    <div>
+      <h3>Django mặc định</h3>
+      <pre><code>class User(AbstractUser):
+    ...
+
+request.user  # instance cua
+# AUTH_USER_MODEL, 1 bang duy nhat</code></pre>
+    </div>
+    <div>
+      <h3>be-py-eco</h3>
+      <pre><code>class Customer(BaseModel): ...
+class Staff(BaseModel): ...
+# 2 bang rieng, khong ke thua
+# AbstractUser/AbstractBaseUser</code></pre>
+    </div>
+  </div>
+  <p>Customer (khách mua hàng) và Staff (nhân viên nội bộ) là hai loại
+  actor rất khác nhau: đăng nhập khác (mật khẩu/Google vs. bắt buộc MFA),
+  thời hạn token khác. Gộp chung một bảng <code>AUTH_USER_MODEL</code> sẽ
+  phải nhồi cả hai logic vào một model.</p>
+
+  <h2>2. Vậy request.user là gì, nếu không phải AUTH_USER_MODEL?</h2>
+  <p>Vẫn là JWT (access/refresh token) như DRF hay dùng — chỉ khác ở
+  <strong>một claim thêm vào token</strong>: <code>actor_type</code>, ghi
+  rõ token này của <code>"customer"</code> hay <code>"staff"</code>.</p>
+  <pre><code>ACTOR_TYPE_CLAIM = "actor_type"
+CUSTOMER_ACTOR_TYPE = "customer"
+STAFF_ACTOR_TYPE = "staff"
+
+refresh = RefreshToken.for_user(customer)
+refresh[ACTOR_TYPE_CLAIM] = CUSTOMER_ACTOR_TYPE
+refresh.access_token[ACTOR_TYPE_CLAIM] = CUSTOMER_ACTOR_TYPE</code></pre>
+  <div class="callout">
+    <code>RefreshToken.for_user()</code> là hàm gốc của thư viện
+    <code>simplejwt</code> — nó không quan tâm <code>customer</code> có
+    phải <code>AUTH_USER_MODEL</code> hay không, chỉ cần object có thuộc
+    tính <code>id</code> để nhét vào claim <code>user_id</code> của token.
+  </div>
+
+  <h2>3. Dispatch: <code>get_user()</code> tự tra đúng bảng</h2>
+  <p>Mặc định, <code>simplejwt</code> tra <code>request.user</code> bằng
+  cách query <em>một</em> bảng <code>AUTH_USER_MODEL</code> cố định. PR
+  #19 override lại <code>get_user()</code> để tự chọn bảng dựa vào
+  <code>actor_type</code> đọc từ token:</p>
+  <pre><code>class JWTAuthentication(BaseJWTAuthentication):
+    def get_user(self, validated_token):
+        actor_type = validated_token.get(ACTOR_TYPE_CLAIM)
+        actor_id = validated_token.get(api_settings.USER_ID_CLAIM)
+
+        if actor_type == CUSTOMER_ACTOR_TYPE:
+            return Customer.objects.get(id=actor_id, is_active=True)
+
+        if actor_type == STAFF_ACTOR_TYPE:
+            return Staff.objects.get(id=actor_id, is_active=True)
+
+        raise InvalidToken("Token is missing a recognized actor_type claim.")</code></pre>
+  <p>Đây chính là <strong>duck typing</strong> (bài 5) ở tầm framework:
+  DRF gọi <code>request.user</code> không quan tâm nó là <code>Customer</code>
+  hay <code>Staff</code>, chỉ cần object trả về đúng "hình dạng" DRF cần.</p>
+
+  <h2>4. "Hình dạng" DRF cần: is_authenticated, is_anonymous</h2>
+  <p><code>IsAuthenticated</code> của DRF chỉ gọi
+  <code>request.user.is_authenticated</code> — không kiểm tra type. Vì
+  <code>Customer</code> không kế thừa <code>AbstractBaseUser</code> (thứ
+  vốn có sẵn 2 thuộc tính này), model phải tự khai báo shim:</p>
+  <pre><code>class Customer(BaseModel):
+    email = models.EmailField(unique=True)
+    ...
+
+    @property
+    def is_authenticated(self):
+        return True    # da qua get_user() thanh cong = coi nhu authenticated
+
+    @property
+    def is_anonymous(self):
+        return False</code></pre>
+  <p>Không có 2 property này, <code>IsAuthenticated</code> sẽ
+  <code>AttributeError</code> ngay khi kiểm tra — dù JWT hợp lệ và
+  <code>get_user()</code> đã trả về đúng <code>Customer</code>.</p>
+
+  <h2>5. Staff sống ngắn hơn Customer — cùng cơ chế, khác cấu hình</h2>
+  <p>Access/refresh token của <code>Customer</code> dùng thời hạn mặc
+  định trong <code>settings.py</code>:</p>
+  <pre><code>SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+}</code></pre>
+  <p><code>Staff</code> cần ngắn hơn (rủi ro cao hơn nếu lộ token) — thay
+  vì thêm <code>if</code> vào <code>get_user()</code>, PR #19 subclass
+  riêng 2 class token, chỉ đổi <code>lifetime</code>:</p>
+  <pre><code>class StaffAccessToken(AccessToken):
+    lifetime = timedelta(minutes=10)   # thay vi 15 phut cua Customer
+
+class StaffRefreshToken(RefreshToken):
+    lifetime = timedelta(days=7)        # thay vi 30 ngay cua Customer
+    access_token_class = StaffAccessToken</code></pre>
+
+  <h2>6. Toàn cảnh: một request đi qua đâu</h2>
+  <div style="text-align: center; margin: 1.5rem 0;">
+    <svg viewBox="0 0 480 230" width="100%" style="max-width: 480px; height: auto;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="So do: JWT chua actor_type di qua get_user, re nhanh sang Customer hoac Staff tuy claim">
+      <rect x="140" y="10" width="200" height="55" rx="8" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <text x="240" y="32" text-anchor="middle" font-size="11" fill="currentColor" font-family="monospace" font-weight="600">JWT access token</text>
+      <text x="240" y="50" text-anchor="middle" font-size="10" fill="currentColor" font-family="monospace">{actor_type, user_id}</text>
+
+      <line x1="240" y1="65" x2="240" y2="95" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow15)"/>
+      <defs>
+        <marker id="arrow15" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+
+      <rect x="140" y="95" width="200" height="40" rx="8" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <text x="240" y="120" text-anchor="middle" font-size="11" fill="currentColor" font-family="monospace" font-weight="600">get_user(token)</text>
+
+      <line x1="200" y1="135" x2="110" y2="165" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow15)"/>
+      <line x1="280" y1="135" x2="370" y2="165" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow15)"/>
+      <text x="120" y="150" text-anchor="middle" font-size="10" fill="var(--accent)">customer</text>
+      <text x="360" y="150" text-anchor="middle" font-size="10" fill="var(--accent)">staff</text>
+
+      <rect x="10" y="170" width="200" height="50" rx="8" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <text x="110" y="192" text-anchor="middle" font-size="11" fill="currentColor" font-family="monospace" font-weight="600">Customer.objects</text>
+      <text x="110" y="208" text-anchor="middle" font-size="10" fill="currentColor" font-family="monospace">.get(id=user_id)</text>
+
+      <rect x="270" y="170" width="200" height="50" rx="8" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+      <text x="370" y="192" text-anchor="middle" font-size="11" fill="currentColor" font-family="monospace" font-weight="600">Staff.objects</text>
+      <text x="370" y="208" text-anchor="middle" font-size="10" fill="currentColor" font-family="monospace">.get(id=user_id)</text>
+    </svg>
+  </div>
+  <p>Claim <code>actor_type</code> sai hoặc thiếu (token giả mạo, hoặc
+  bảng cũ chưa có claim này) → <code>InvalidToken</code> ngay, không rơi
+  vào nhánh nào — không có actor "mặc định" nào cả.</p>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0015-jwt-actor-type.html">Cheat sheet JWT &amp; actor_type</a>.
+  Nguồn chính nên đọc song song: <a href="https://github.com/jazzband/djangorestframework-simplejwt/blob/master/rest_framework_simplejwt/authentication.py">Mã nguồn <code>get_user()</code> gốc của simplejwt (GitHub)</a> — để thấy bản mặc định chỉ query một <code>user_model</code> cố định — và <a href="https://www.django-rest-framework.org/api-guide/authentication/#custom-authentication">DRF docs — Custom authentication</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. Vì sao Customer/Staff không dùng chung <code>AUTH_USER_MODEL</code>?</p>
+      <button data-correct="false" onclick="answer(this)">Vì Django không cho phép 2 loại user</button>
+      <button data-correct="true" onclick="answer(this)">Vì hai loại actor có luồng đăng nhập/thời hạn token khác nhau</button>
+      <button data-correct="false" onclick="answer(this)">Vì JWT không hỗ trợ AUTH_USER_MODEL</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. <code>get_user()</code> dựa vào đâu để biết tra bảng Customer hay Staff?</p>
+      <button data-correct="false" onclick="answer(this)">Dựa vào URL của request</button>
+      <button data-correct="true" onclick="answer(this)">Dựa vào claim actor_type trong token</button>
+      <button data-correct="false" onclick="answer(this)">Dựa vào tên bảng có sẵn trong database</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. Thiếu <code>is_authenticated</code>/<code>is_anonymous</code> trên Customer thì điều gì xảy ra?</p>
+      <button data-correct="false" onclick="answer(this)">Không sao, DRF tự suy ra được</button>
+      <button data-correct="true" onclick="answer(this)">IsAuthenticated báo lỗi AttributeError dù JWT hợp lệ</button>
+      <button data-correct="false" onclick="answer(this)">Customer sẽ được coi là Staff</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span>← <a href="0012-drf-serializers-and-views.html">Bài 12: DRF serializers &amp; views</a> · <a href="0014-python-oop-idioms.html">Bài 14: OOP idiom của Python</a></span>
+    <span>Tiếp theo: (báo mình khi muốn học tiếp) →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>
