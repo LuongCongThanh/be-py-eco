@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 12: DRF Serializer &amp; View</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 12 · Giai đoạn 2 — Django/DRF trong be-py-eco</div>
+  <h1>Serializer &amp; View: nơi request thật sự được xử lý</h1>
+
+  <div class="callout">
+    Cũng như bài 11: <code>src/common/api/</code> trong
+    <code>be-py-eco</code> hiện gần như rỗng — dự án ở Slice 0. Bài này
+    dạy khái niệm DRF tổng quát, để bạn sẵn sàng đọc/viết code khi
+    serializer và view thật xuất hiện ở các slice sau.
+  </div>
+
+  <h2>1. Vì sao cần serializer? Bài toán mà nó giải quyết</h2>
+  <p>HTTP chỉ mang được text (JSON); model Django (bài 11) là object
+  Python. Serializer là lớp trung gian dịch hai chiều:
+  <strong>model → dict/JSON</strong> (trả response) và
+  <strong>JSON → dict đã validate → model</strong> (nhận request, có
+  kiểm tra dữ liệu client gửi lên).</p>
+
+  <pre><code>from rest_framework import serializers
+
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = ["id", "title", "author", "available"]</code></pre>
+  <p><code>class Meta:</code> vẫn là class Python bình thường (bài 4) —
+  DRF đọc <code>Meta.model</code>/<code>Meta.fields</code> để biết
+  serialize field nào.</p>
+
+  <h2>2. ModelSerializer vs Serializer thường</h2>
+  <p><code>ModelSerializer</code> tự sinh field/validation từ model
+  (giới hạn <code>max_length</code>... lấy thẳng từ field model). Còn
+  <code>serializers.Serializer</code> bắt khai tay từng field:</p>
+  <pre><code>class BookSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    title = serializers.CharField(max_length=200)
+    author = serializers.CharField(max_length=100)
+    available = serializers.BooleanField()</code></pre>
+  <p>Dùng bản thường khi dữ liệu không khớp 1-1 với 1 model; với CRUD
+  đơn giản (phổ biến nhất) thì <code>ModelSerializer</code> là mặc định.</p>
+
+  <div style="text-align: center; margin: 1.5rem 0;">
+    <svg width="100%" viewBox="0 0 480 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Serializer dịch hai chiều giữa Model instance và JSON/dict">
+      <rect x="8" y="50" width="120" height="50" rx="6" fill="none" stroke="var(--border)" />
+      <text x="68" y="80" text-anchor="middle" fill="currentColor" font-size="14" font-family="inherit">Model instance</text>
+
+      <rect x="180" y="42" width="120" height="66" rx="6" fill="none" stroke="var(--accent)" stroke-width="2" />
+      <text x="240" y="80" text-anchor="middle" fill="currentColor" font-size="14" font-family="inherit">Serializer</text>
+
+      <rect x="352" y="50" width="120" height="50" rx="6" fill="none" stroke="var(--border)" />
+      <text x="412" y="80" text-anchor="middle" fill="currentColor" font-size="14" font-family="inherit">JSON / dict</text>
+
+      <line x1="128" y1="60" x2="178" y2="60" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="153" y="52" text-anchor="middle" fill="var(--accent)" font-size="11" font-family="inherit">data=... .save()</text>
+
+      <line x1="178" y1="92" x2="128" y2="92" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="153" y="110" text-anchor="middle" fill="var(--accent)" font-size="11" font-family="inherit">.data</text>
+
+      <line x1="300" y1="60" x2="350" y2="60" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="325" y="52" text-anchor="middle" fill="var(--accent)" font-size="11" font-family="inherit">.data</text>
+
+      <line x1="350" y1="92" x2="300" y2="92" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#arrow)" />
+      <text x="325" y="110" text-anchor="middle" fill="var(--accent)" font-size="11" font-family="inherit">data=...</text>
+
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)" />
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h2>3. Hai chiều: serialize (ra JSON) và deserialize (vào model)</h2>
+  <pre><code># Model -> JSON (vi du: tra response cho GET)
+serializer = BookSerializer(book_instance)
+serializer.data
+# {"id": 7, "title": "Dune", "author": "Frank Herbert", "available": true}
+
+# JSON -> Model, co validate (vi du: nhan du lieu tu POST)
+serializer = BookSerializer(data=request.data)
+serializer.is_valid()         # True/False, khong raise
+serializer.validated_data      # dict da lam sach (bai 5)
+serializer.save()               # tao/cap nhat trong DB</code></pre>
+  <div class="callout">
+    Để ý: DRF chọn <strong>kiểm tra tường minh</strong>
+    (<code>if serializer.is_valid():</code>) thay vì bắt <code>try/except</code>
+    (bài 6) cho lỗi validate đầu vào — lỗi "dữ liệu client sai" dùng
+    kiểm tra có điều kiện, lỗi hệ thống thật mới dùng exception.
+  </div>
+
+  <h2>4. Trace end-to-end: 1 request POST đi qua serializer</h2>
+  <pre><code>POST /api/v1/books/
+{"title": "Dune", "author": "", "available": true}
+
+# request.data la dict Django da parse tu JSON tren
+serializer = BookSerializer(data=request.data)
+serializer.is_valid()      # -> False: "author" rong ma bat buoc
+serializer.errors
+# {"author": ["This field may not be blank."]}
+# View tra thang dict nay ra client voi status 400
+
+# Client sua lai va gui dung:
+serializer = BookSerializer(data={"title": "Dune", "author": "Frank Herbert", "available": True})
+serializer.is_valid()          # -> True
+serializer.validated_data      # dict da lam sach, dung noi bo
+book = serializer.save()       # tao dong moi trong bang Book -> tra ve Book instance
+serializer.data
+# {"id": 8, "title": "Dune", "author": "Frank Herbert", "available": true}
+# co them "id" vi gio serializer dang serialize object "book" vua tao, khong phai dict input</code></pre>
+  <p><code>serializer.save()</code> tự quyết định tạo mới hay cập nhật:
+  không kèm instance có sẵn (như trên) → <code>Model.objects.create(...)</code>;
+  có instance (<code>BookSerializer(book, data=request.data)</code>) → cập nhật instance đó.</p>
+
+  <h2>5. APIView: mỗi HTTP method = 1 method cùng tên trong class</h2>
+  <pre><code>from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class BookListView(APIView):
+    def get(self, request):
+        books = Book.objects.all()
+        serializer = BookSerializer(books, many=True)   # many=True: serialize ca list
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = BookSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)</code></pre>
+  <p>GET → gọi <code>get(self, request)</code>; POST → gọi
+  <code>post(self, request)</code> (<code>self</code> là instance của
+  <code>BookListView</code>, bài 4) — đúng luồng POST đã trace ở mục 4.
+  <code>many=True</code> báo serializer đầu vào là queryset, trả về list JSON.</p>
+
+  <h2>6. Đăng ký vào <code>urls.py</code></h2>
+  <pre><code>from django.urls import path
+urlpatterns = [
+    path("api/v1/books/", BookListView.as_view()),
+]</code></pre>
+  <p><code>.as_view()</code> chuyển class thành function Django hiểu được,
+  nối vào <code>urlpatterns</code> (bài 10) — khép kín luồng: request →
+  <code>urlpatterns</code> → <code>as_view()</code> → dispatch tới
+  <code>post()</code> → serializer validate/save → <code>Response</code>.</p>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0012-drf-serializers-and-views.html">Cheat sheet DRF Serializer &amp; View</a>.
+  Nguồn chính nên đọc song song: <a href="https://www.django-rest-framework.org/tutorial/1-serialization/">DRF Tutorial 1 — Serialization</a> và <a href="https://www.django-rest-framework.org/tutorial/3-class-based-views/">DRF Tutorial 3 — Class-based Views</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. <code>serializer.data</code> dùng khi bạn muốn đi theo chiều nào?</p>
+      <button data-correct="false" onclick="answer(this)">JSON vào model</button>
+      <button data-correct="true" onclick="answer(this)">Model ra JSON</button>
+      <button data-correct="false" onclick="answer(this)">Model vào database</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. Một request POST tới view sẽ gọi method nào trong class?</p>
+      <button data-correct="false" onclick="answer(this)">Method get()</button>
+      <button data-correct="true" onclick="answer(this)">Method post()</button>
+      <button data-correct="false" onclick="answer(this)">Method __init__()</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. <code>.as_view()</code> dùng để làm gì?</p>
+      <button data-correct="false" onclick="answer(this)">Validate dữ liệu vào</button>
+      <button data-correct="true" onclick="answer(this)">Chuyển class thành view Django hiểu được</button>
+      <button data-correct="false" onclick="answer(this)">Chạy migration</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span>← <a href="0011-models-and-orm-basics.html">Bài 11: Model &amp; ORM cơ bản</a></span>
+    <span>Tiếp theo: <a href="0013-pytest-django-basics.html">Bài 13: Testing với pytest-django</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>

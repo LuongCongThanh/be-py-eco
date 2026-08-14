@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tra cứu: Class cơ bản</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Tài liệu tra cứu</div>
+  <h1>Class cơ bản trong Python — Cheat Sheet</h1>
+
+  <h2>Định nghĩa class</h2>
+  <pre><code>class Dog:
+    def __init__(self, name, breed):
+        self.name = name
+        self.breed = breed
+
+    def bark(self):
+        return f"{self.name} says woof!"</code></pre>
+
+  <h2>Khởi tạo object — không có <code>new</code></h2>
+  <pre><code>rex = Dog("Rex", "Labrador")
+print(rex.bark())   # "Rex says woof!"</code></pre>
+  <p>Gọi tên class như một hàm sẽ tạo object mới và tự động gọi
+  <code>__init__</code>. Không có từ khóa <code>new</code>.</p>
+
+  <h2><code>self</code>: tham số đầu tiên, luôn tường minh</h2>
+  <p><code>self</code> là chính object đang được thao tác — tương đương
+  <code>this</code> ở ngôn ngữ khác, nhưng ở Python nó là một tham số bình
+  thường, phải khai báo tường minh trong mọi method, và Python tự động
+  truyền nó vào khi bạn gọi <code>rex.bark()</code>.</p>
+
+  <h2><code>__init__</code>: hàm khởi tạo</h2>
+  <p>Chạy tự động khi tạo object, dùng để gán các thuộc tính ban đầu
+  (<code>self.name = name</code>). Tên có 2 dấu gạch dưới ở đầu và cuối
+  — đây là một "dunder method" (double underscore), Python dùng quy ước
+  này cho các hook đặc biệt.</p>
+
+  <h2>Thuộc tính (attributes) &amp; phương thức (methods)</h2>
+  <pre><code>rex.name          # "Rex" — truy cập thuộc tính
+rex.bark()        # gọi method</code></pre>
+
+  <h2>Kế thừa (inheritance)</h2>
+  <pre><code>class Puppy(Dog):
+    def bark(self):
+        return f"{self.name} says yip!"  # ghi đè (override)</code></pre>
+
+  <p class="sources">Nguồn chính: <a href="https://docs.python.org/3/tutorial/classes.html">The Python Tutorial §9 — Classes</a></p>
+</main>
+</body>
+</html>

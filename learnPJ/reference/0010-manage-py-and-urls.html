@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tra cứu: manage.py &amp; urls.py</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Tài liệu tra cứu</div>
+  <h1>manage.py &amp; urls.py — Cheat Sheet (theo be-py-eco)</h1>
+
+  <h2><code>if __name__ == "__main__":</code></h2>
+  <pre><code>if __name__ == "__main__":
+    main()</code></pre>
+  <p><code>__name__</code> là biến đặc biệt Python gán tự động cho mỗi
+  module: bằng <code>"__main__"</code> khi file được chạy trực tiếp
+  (<code>python manage.py</code>), khác đi khi file được import từ nơi
+  khác. Idiom này nghĩa là "chỉ chạy <code>main()</code> khi file này là
+  file khởi động, không chạy khi bị import".</p>
+
+  <h2>manage.py làm 3 việc</h2>
+  <pre><code>sys.path.insert(0, str(SRC_DIR))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
+execute_from_command_line(sys.argv)</code></pre>
+  <ol>
+    <li>Thêm <code>src/</code> vào đường dẫn tìm module (để
+      <code>import config...</code> hoạt động).</li>
+    <li><code>setdefault</code>: đặt <code>DJANGO_SETTINGS_MODULE</code>
+      nếu nó <em>chưa</em> được set — khác với gán trực tiếp
+      (<code>=</code>), <code>setdefault</code> không ghi đè nếu bạn đã
+      set biến môi trường từ trước (như trong how-to-run.md).</li>
+    <li>Chuyển toàn bộ tham số dòng lệnh (<code>sys.argv</code>) cho
+      Django xử lý — đây là lý do <code>manage.py migrate</code>,
+      <code>manage.py runserver</code> đều gọi qua cùng 1 file.</li>
+  </ol>
+
+  <h2>urls.py: bản đồ URL → view</h2>
+  <pre><code># cu phap tong quat
+from django.urls import path
+urlpatterns = [
+    path("health/", health_check_view),
+    path("api/v1/orders/", order_list_view),
+]</code></pre>
+  <p>Mỗi <code>path(...)</code> nối một URL với một hàm/class xử lý
+  request (gọi là <em>view</em>). Trong <code>be-py-eco</code>,
+  <code>src/config/urls.py</code> hiện đang <strong>rỗng</strong>
+  (<code>urlpatterns = []</code>) — dự án còn ở Slice 0, chưa có route
+  nào được thêm; các route <code>/api/v1/...</code> và
+  <code>/health/*</code> sẽ vào ở Slice 1.</p>
+
+  <p class="sources">Nguồn chính: <a href="https://docs.djangoproject.com/en/stable/ref/django-admin/">Django docs — django-admin and manage.py</a> và <a href="https://docs.djangoproject.com/en/stable/topics/http/urls/">Django docs — URL dispatcher</a></p>
+</main>
+</body>
+</html>

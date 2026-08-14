@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 9: Django Settings Anatomy</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 9 · Giai đoạn 2 — Django/DRF trong be-py-eco</div>
+  <h1>Settings của Django là gì — giải mã lệnh bạn đã gõ ở how-to-run.md</h1>
+
+  <p>Bắt đầu giai đoạn 2. Trước khi chạm view hay model, giải mã dòng lệnh
+  bạn đã gõ khi setup project:</p>
+  <pre><code>$env:DJANGO_SETTINGS_MODULE = "config.settings.local"</code></pre>
+  <p>Dùng file thật trong repo <code>be-py-eco</code>.</p>
+
+  <h2>1. Settings chỉ là một file <code>.py</code> bình thường</h2>
+  <pre><code># src/config/settings/base.py
+SECRET_KEY = env("SECRET_KEY")
+DEBUG = env.bool("DEBUG", default=False)
+DATABASES = {"default": env.db_url("DATABASE_URL")}</code></pre>
+  <p><code>SECRET_KEY</code>, <code>DEBUG</code>, <code>DATABASES</code>
+  chỉ là <strong>biến toàn cục</strong> trong module <code>base.py</code> —
+  Django import module này như mọi module Python khác rồi đọc thuộc tính
+  theo tên. Gõ sai tên (ví dụ <code>SECRETKEY</code>) không báo lỗi cú
+  pháp, chỉ khiến Django không tìm thấy biến và dùng mặc định hoặc báo
+  thiếu cấu hình.</p>
+  <p>Thiết kế "biến toàn cục trong module" (thay vì class/dict) cho phép
+  dùng thẳng <code>from .base import *</code> để "thừa kế" giữa các file
+  môi trường — xem mục 3. Đổi lại là không có kiểm tra kiểu tự động; bù
+  bằng <code>django-environ</code> (mục 5) và <code>manage.py check</code>.</p>
+
+  <h2>2. <code>DJANGO_SETTINGS_MODULE</code>: đường dẫn dotted tới file đó</h2>
+  <div class="compare">
+    <div>
+      <h3>Đường dẫn file</h3>
+      <pre><code>src/config/settings/local.py</code></pre>
+    </div>
+    <div>
+      <h3>Dotted path Django cần</h3>
+      <pre><code>config.settings.local</code></pre>
+    </div>
+  </div>
+  <p>Django không tự biết dùng file nào trong 4 file
+  (<code>base</code>/<code>local</code>/<code>test</code>/<code>production</code>)
+  — biến môi trường <code>DJANGO_SETTINGS_MODULE</code> trả lời câu hỏi
+  đó, tương đương cú pháp <code>import config.settings.local</code>.</p>
+  <p>Dùng biến môi trường (thay vì tham số dòng lệnh) vì mọi công cụ
+  Django (dev server, Celery, test runner, WSGI) cần biết cùng settings
+  module dù khởi động khác cách nhau — set một lần, mọi tool con đều đọc
+  được. Đó là lý do <code>manage.py</code>/<code>wsgi.py</code> đều gọi
+  <code>os.environ.setdefault(...)</code>: ưu tiên giá trị bạn set từ
+  ngoài, chỉ dùng mặc định nếu chưa set.</p>
+
+  <h2>3. 4 file settings không tách biệt — chúng "kế thừa" nhau</h2>
+  <pre><code># src/config/settings/local.py
+from .base import *   # lay toan bo bien tu base.py
+
+DEBUG = True           # roi ghi de rieng 1 bien</code></pre>
+  <div class="callout">
+    <code>from .base import *</code> đưa toàn bộ biến của
+    <code>base.py</code> (SECRET_KEY, DATABASES, CACHES, ...) vào
+    <code>local.py</code>. Rồi <code>local.py</code> chỉ cần ghi đè đúng
+    những gì khác với môi trường local — ở đây chỉ 1 dòng:
+    <code>DEBUG = True</code>. Đây là lý do repo có 4 file thay vì 1: mỗi
+    môi trường (local/test/production) chỉ khai báo phần khác biệt, phần
+    chung nằm hết ở <code>base.py</code>.
+  </div>
+
+  <div style="text-align: center; margin: 1.5rem 0;">
+    <svg viewBox="0 0 420 220" width="100%" style="max-width: 420px; height: auto;" role="img" aria-label="Sơ đồ layering settings: local.py đè lên base.py, ghi đè DEBUG = True">
+      <rect x="30" y="140" width="360" height="60" rx="6" fill="none" stroke="var(--border)" stroke-width="2"/>
+      <text x="210" y="175" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="15">base.py (chung)</text>
+
+      <rect x="60" y="60" width="300" height="60" rx="6" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <text x="210" y="87" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="14">local.py</text>
+      <text x="210" y="105" text-anchor="middle" fill="var(--accent)" font-family="monospace" font-size="12">DEBUG = True (ghi de)</text>
+
+      <line x1="210" y1="120" x2="210" y2="140" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)"/>
+      <text x="225" y="132" fill="var(--accent)" font-family="monospace" font-size="11">from .base import *</text>
+
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+
+      <text x="210" y="30" text-anchor="middle" fill="var(--muted)" font-family="monospace" font-size="12">config.settings.local</text>
+    </svg>
+  </div>
+
+  <h2>4. Cơ chế thật đằng sau <code>from .base import *</code></h2>
+  <p>Python thực thi <code>base.py</code> trước, tạo một <em>namespace</em>
+  chứa mọi biến top-level của nó, rồi copy toàn bộ tên đó sang namespace
+  của <code>local.py</code>. Vì vậy thứ tự quan trọng: import phải nằm
+  <strong>trước</strong> <code>DEBUG = True</code>, nếu không dòng import
+  sẽ đè ngược lại giá trị mặc định — đây chỉ là quy tắc gán biến bình
+  thường của Python, không có gì đặc thù của Django.</p>
+  <p>Chú thích <code># noqa: F403</code> tắt cảnh báo linter về
+  <code>import *</code> (khó biết biến đến từ đâu) — team chấp nhận đánh
+  đổi này để không phải lặp lại toàn bộ <code>base.py</code> trong mỗi
+  file môi trường.</p>
+
+  <h2>5. <code>env(...)</code>: đọc config từ <code>.env</code>, không hard-code</h2>
+  <pre><code>env("SECRET_KEY")                   # bat buoc co trong .env
+env.bool("DEBUG", default=False)     # co gia tri mac dinh
+env.db_url("DATABASE_URL")           # parse thanh dict ket noi DB</code></pre>
+  <p><code>base.py</code> được commit vào git và dùng chung mọi môi
+  trường — hard-code secret vào đó nghĩa là ai đọc repo cũng đọc được
+  secret. Đọc từ <code>.env</code> (không commit) tách "code" khỏi
+  "cấu hình".</p>
+  <p><code>env</code> là một object (<code>environ.Env()</code>), và
+  <code>env("SECRET_KEY")</code> gọi được như hàm nhờ dunder method
+  <code>__call__</code> — cùng họ với <code>__init__</code> bạn học ở bài
+  4. Bên trong, nó tìm <code>SECRET_KEY</code> trong <code>os.environ</code>
+  (đã nạp từ <code>.env</code>) và trả về giá trị.</p>
+  <p>3 dòng ví dụ cho thấy 3 mức bắt buộc: <code>env("SECRET_KEY")</code>
+  không có <code>default</code> nên <strong>bắt buộc</strong> có trong
+  <code>.env</code>, thiếu sẽ raise lỗi ngay; <code>env.bool(...)</code>
+  có default và tự ép kiểu <code>bool</code> từ chuỗi môi trường;
+  <code>env.db_url(...)</code> parse connection string thành dict cho
+  <code>DATABASES["default"]</code>.</p>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0009-django-settings-anatomy.html">Cheat sheet Django Settings Anatomy</a>.
+  Nguồn chính nên đọc song song: <a href="https://docs.djangoproject.com/en/stable/topics/settings/">Django docs — Settings</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. <code>DJANGO_SETTINGS_MODULE = "config.settings.local"</code> tương ứng file nào?</p>
+      <button data-correct="false" onclick="answer(this)">src/config/settings/base.py</button>
+      <button data-correct="true" onclick="answer(this)">src/config/settings/local.py</button>
+      <button data-correct="false" onclick="answer(this)">src/config/urls.py</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. Vì sao local.py có dòng <code>from .base import *</code>?</p>
+      <button data-correct="false" onclick="answer(this)">Để chạy nhanh hơn</button>
+      <button data-correct="true" onclick="answer(this)">Để kế thừa các biến chung</button>
+      <button data-correct="false" onclick="answer(this)">Bắt buộc cú pháp Django</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. Nếu thiếu <code>SECRET_KEY</code> trong <code>.env</code>, dòng <code>env("SECRET_KEY")</code> sẽ:</p>
+      <button data-correct="false" onclick="answer(this)">Trả về None âm thầm</button>
+      <button data-correct="true" onclick="answer(this)">Báo lỗi vì không có default</button>
+      <button data-correct="false" onclick="answer(this)">Trả về chuỗi rỗng</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span>← <a href="0007-modules-and-decorators.html">Bài 7: Module &amp; Decorator</a></span>
+    <span>Tiếp theo: <a href="0010-manage-py-and-urls.html">Bài 10: manage.py &amp; urls.py</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>
