@@ -47,6 +47,33 @@ uv run python -m pytest
 > via `python -m mypy` (its compiled extension DLL); treat it as CI-only
 > until IT allowlists it.
 
+### Alternative: native local PostgreSQL instead of the Compose container
+
+If you already run PostgreSQL natively on the host (e.g. a Windows service
+install on port `5432`) and would rather point Django at that instead of the
+Compose `postgres` container, do this once per machine:
+
+```powershell
+# 1. Create the app role and database on the native instance (run as a
+#    superuser, e.g. `postgres`).
+psql -U postgres -h localhost -p 5432 -c "CREATE ROLE be_py_eco LOGIN PASSWORD 'be_py_eco' CREATEDB;"
+psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE be_py_eco OWNER be_py_eco;"
+
+# 2. Point .env at the native instance instead of the container.
+#    DATABASE_URL=psql://be_py_eco:be_py_eco@localhost:5432/be_py_eco
+
+# 3. Stop the container so nobody accidentally connects to a stale one.
+docker compose -f infra/compose/docker-compose.yml stop postgres
+```
+
+The `CREATEDB` grant is required because `pytest-django` creates and drops a
+throwaway test database (`test_be_py_eco`) around the suite — a role without
+it fails with `permission denied to create database`. Verify the switch with
+`uv run python -m pytest tests/test_environment.py -k database_connection`.
+
+Switching back to the container is just the reverse: restore
+`DATABASE_URL`'s port to `5433` and `docker compose ... up -d postgres`.
+
 ## Everyday commands
 
 ```powershell

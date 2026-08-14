@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Tra cứu: OOP Idiom của Python</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Tài liệu tra cứu</div>
+  <h1>OOP Idiom đặc thù của Python — Cheat Sheet</h1>
+
+  <h2>Encapsulation: quy ước, không phải từ khóa <code>private</code></h2>
+  <pre><code>class Account:
+    def __init__(self, balance):
+        self._balance = balance     # quy uoc: "internal", dung tu y truy cap
+        self.__secret = "x"          # name-mangled, kho truy cap tu ben ngoai hon</code></pre>
+  <p>Python không có <code>private</code>/<code>public</code> thật sự.
+  1 dấu gạch dưới đầu (<code>_balance</code>) là quy ước "đừng đụng vào
+  từ bên ngoài" — vẫn truy cập được, chỉ là bất lịch sự. 2 dấu gạch dưới
+  (<code>__secret</code>) kích hoạt "name mangling" (Python đổi tên thuộc
+  tính thành <code>_Account__secret</code>), khó truy cập nhầm hơn nhưng
+  vẫn không phải bảo mật thật.</p>
+
+  <h2><code>@property</code>: gọi method như thuộc tính</h2>
+  <pre><code>class Circle:
+    def __init__(self, radius):
+        self.radius = radius
+
+    @property
+    def area(self):
+        return 3.14159 * self.radius ** 2
+
+c = Circle(2)
+c.area        # 12.566 — goi nhu thuoc tinh, KHONG phai c.area()</code></pre>
+  <p>Dùng khi muốn 1 giá trị được tính toán, nhưng vẫn truy cập với cú
+  pháp gọn như thuộc tính thường, không phải gọi hàm.</p>
+
+  <h2><code>@classmethod</code> và <code>@staticmethod</code></h2>
+  <pre><code>class Book:
+    def __init__(self, title):
+        self.title = title
+
+    @classmethod
+    def from_string(cls, raw):        # nhan class (cls), khong nhan instance
+        return cls(raw.strip().title())
+
+    @staticmethod
+    def is_valid_title(title):        # khong nhan self hay cls
+        return len(title) > 0
+
+Book.from_string("  chi pheo  ")   # Book(title="Chi Pheo")
+Book.is_valid_title("")             # False</code></pre>
+  <p><code>@classmethod</code>: nhận <code>cls</code> (chính class) thay
+  vì <code>self</code> — thường dùng làm "constructor phụ" (alternative
+  constructor). <code>@staticmethod</code>: không nhận gì đặc biệt cả,
+  chỉ là hàm thường được "nhóm" vào trong class vì liên quan logic.</p>
+
+  <h2>Dunder methods khác ngoài <code>__init__</code></h2>
+  <pre><code>class Book:
+    def __init__(self, title):
+        self.title = title
+
+    def __str__(self):
+        return f"Book: {self.title}"      # str(book) / print(book)
+
+    def __eq__(self, other):
+        return self.title == other.title   # book1 == book2
+
+print(Book("A"))          # "Book: A"
+Book("A") == Book("A")     # True</code></pre>
+  <p>Không định nghĩa <code>__eq__</code>, <code>==</code> giữa 2 object
+  sẽ so sánh theo <em>identity</em> (có phải cùng 1 object trong bộ nhớ
+  không), giống <code>is</code>, chứ không so sánh nội dung.</p>
+
+  <h2>Polymorphism trong Python thường qua duck typing (bài 5)</h2>
+  <p>Nhiều ngôn ngữ dùng abstract class/interface để ép polymorphism.
+  Python có <code>abc</code> module cho việc đó, nhưng phổ biến hơn
+  trong code Python thực tế là dựa hẳn vào duck typing: không cần khai
+  báo interface, chỉ cần object có đúng method cần dùng.</p>
+
+  <p class="sources">Nguồn chính: <a href="https://docs.python.org/3/tutorial/classes.html#private-variables">The Python Tutorial §9.6 — Private Variables</a> và <a href="https://realpython.com/instance-class-and-static-methods-demystified/">Real Python — Instance, Class, and Static Methods Demystified</a></p>
+</main>
+</body>
+</html>

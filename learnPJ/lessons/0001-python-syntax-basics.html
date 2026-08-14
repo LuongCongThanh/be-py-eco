@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 1: Cú pháp cơ bản Python</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 1 · Python cốt lõi</div>
+  <h1>Python đọc khác gì so với những gì bạn đã biết</h1>
+
+  <p>Bạn đã biết lập trình rồi. Bài này chỉ nêu những điểm khác biệt cụ thể
+  giữa Python và các ngôn ngữ khác.</p>
+
+  <h2>1. Block dựa trên thụt lề, không dùng dấu ngoặc</h2>
+  <p>Không có <code>{ }</code>, không có <code>end</code>. Dấu hai chấm mở
+  một block; các dòng cùng mức thụt lề bên dưới thuộc block đó — thụt lề
+  chính là cú pháp, không phải style.</p>
+
+  <div style="text-align:center; margin: 1.5rem 0;">
+    <svg viewBox="0 0 360 150" width="100%" style="max-width:420px" role="img" aria-label="Sơ đồ block thụt lề: if x > 0 bao ngoài, hai dòng print thụt lề vào bên trong">
+      <rect x="10" y="10" width="340" height="130" rx="6" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+      <text x="24" y="34" font-family="SF Mono, Menlo, Consolas, monospace" font-size="15" fill="var(--ink)">if x &gt; 0:</text>
+      <rect x="40" y="48" width="290" height="78" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="56" y="78" font-family="SF Mono, Menlo, Consolas, monospace" font-size="14" fill="var(--ink)">print("positive")</text>
+      <text x="56" y="104" font-family="SF Mono, Menlo, Consolas, monospace" font-size="14" fill="var(--ink)">print("still positive")</text>
+    </svg>
+  </div>
+
+  <div class="compare">
+    <div>
+      <h3>Cái bạn quen dùng</h3>
+      <pre><code>if (x > 0) {
+  print("positive");
+}</code></pre>
+    </div>
+    <div>
+      <h3>Python</h3>
+      <pre><code>if x > 0:
+    print("positive")</code></pre>
+    </div>
+  </div>
+  <div class="callout">
+    Thụt lề sai (trộn tab/space, hoặc thụt lề không nhất quán) sẽ khiến
+    Python báo <code>IndentationError</code> — ở đây nó không chỉ là style,
+    mà là cú pháp bắt buộc.
+  </div>
+
+  <pre><code>x = 5
+if x > 0:
+    print("duong")
+    print("van la duong")   # -> in ca 2 dong, vi cung thuoc block if
+
+x = -1
+if x > 0:
+    print("duong")
+print("van la duong")       # -> luon in, vi khong con thut le vao if nua</code></pre>
+  <p>Quy ước phổ biến là thụt lề 4 space, không trộn với tab.</p>
+
+  <h2>2. Biến không khai báo kiểu</h2>
+  <pre><code>x = 5        # x tro toi mot int
+x = "five"   # gio x tro toi mot str -- hoan toan hop le, khong loi
+print(x)     # -> five</code></pre>
+  <p>Mỗi <em>giá trị</em> có một kiểu. Tên biến chỉ là nhãn có thể trỏ tới
+  bất kỳ giá trị nào, bất cứ lúc nào. Đây gọi là <strong>dynamic
+  typing</strong>.</p>
+
+  <p>Python vẫn kiểm tra kiểu, chỉ là kiểm tra <strong>lúc chạy</strong>
+  (runtime) chứ không phải lúc biên dịch.</p>
+  <pre><code>x = "five"
+y = x + 1   # -> TypeError: can only concatenate str (not "int") to str</code></pre>
+
+  <h2>3. Các kiểu built-in bạn sẽ gặp liên tục</h2>
+  <p><code>int</code>, <code>float</code>, <code>str</code>,
+  <code>bool</code> (<code>True</code>/<code>False</code>), và
+  <code>None</code> (giống null/nil trong ngôn ngữ khác). Cộng thêm 4
+  container built-in bạn sẽ dùng thay vì tự viết: <code>list</code>
+  (<code>[1, 2, 3]</code>, có thứ tự & mutable), <code>tuple</code>
+  (<code>(1, 2, 3)</code>, có thứ tự & immutable), <code>dict</code>
+  (<code>{"a": 1}</code>, key→value), và <code>set</code>
+  (<code>{1, 2, 3}</code>, duy nhất & không thứ tự).</p>
+
+  <pre><code>nums = [1, 2, 3]
+nums.append(4)      # -> [1, 2, 3, 4], list mutable nen sua duoc
+
+point = (10, 20)
+point.append(30)     # -> AttributeError: 'tuple' object has no attribute 'append'</code></pre>
+  <p><code>tuple</code> immutable là tín hiệu "dữ liệu này không đổi sau khi
+  tạo", ví dụ toạ độ <code>(x, y)</code>.</p>
+
+  <h2>4. Format chuỗi: f-string</h2>
+  <pre><code>name = "world"
+print(f"hello, {name}!")   # -> hello, world!
+
+age = 25
+print(f"nam sau se {age + 1} tuoi")   # -> nam sau se 26 tuoi</code></pre>
+  <p><code>f"..."</code> tính giá trị bất kỳ biểu thức nào trong
+  <code>{...}</code> rồi chèn vào chuỗi, như <code>age + 1</code> ở trên.</p>
+
+  <h2>5. Vì sao không có dấu chấm phẩy, không có khai báo kiểu?</h2>
+  <p>Xuống dòng và thụt lề đã làm nhiệm vụ đánh dấu ranh giới lệnh/block,
+  nên dấu chấm phẩy và khai báo kiểu tường minh trở thành thừa.</p>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0001-python-syntax-basics.html">Cheat sheet Cú pháp cơ bản Python</a>.
+  Nguồn chính nên đọc song song với bài này: <a href="https://docs.python.org/3/tutorial/introduction.html">The Python Tutorial §3 — An Informal Introduction to Python</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. Cái gì kết thúc dòng <code>if</code> và bắt đầu block bên dưới trong Python?</p>
+      <button data-correct="false" onclick="answer(this)">Dấu chấm phẩy</button>
+      <button data-correct="true" onclick="answer(this)">Dấu hai chấm</button>
+      <button data-correct="false" onclick="answer(this)">Dấu ngoặc nhọn</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. Sau <code>x = 5</code> rồi <code>x = "hi"</code>, điều gì xảy ra?</p>
+      <button data-correct="false" onclick="answer(this)">Báo lỗi kiểu dữ liệu</button>
+      <button data-correct="true" onclick="answer(this)">Không có gì sai cả</button>
+      <button data-correct="false" onclick="answer(this)">Báo lỗi cú pháp</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. Giá trị nào tương đương với null trong Python?</p>
+      <button data-correct="false" onclick="answer(this)">Giá trị số không</button>
+      <button data-correct="true" onclick="answer(this)">Giá trị None</button>
+      <button data-correct="false" onclick="answer(this)">Giá trị False</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span></span>
+    <span>Tiếp theo: <a href="0002-loops-and-comprehensions.html">Bài 2: Vòng lặp &amp; Comprehension</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>

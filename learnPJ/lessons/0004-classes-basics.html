@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bài 4: Class cơ bản</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="lesson">
+  <div class="lesson-meta">Bài 4 · Python cốt lõi</div>
+  <h1>Class trong Python: không có <code>new</code>, và <code>self</code> luôn tường minh</h1>
+
+  <p>Điểm khác với OOP bạn đã biết: tạo object không cần <code>new</code>,
+  và "con trỏ tới chính object" (<code>this</code> ở nơi khác) phải khai báo
+  tường minh làm tham số đầu tiên của mọi method.</p>
+
+  <h2>1. Định nghĩa class</h2>
+  <div class="compare">
+    <div>
+      <h3>Cái bạn quen dùng</h3>
+      <pre><code>class Dog {
+  String name;
+  Dog(String name) {
+    this.name = name;
+  }
+  String bark() {
+    return name + " says woof!";
+  }
+}</code></pre>
+    </div>
+    <div>
+      <h3>Python</h3>
+      <pre><code>class Dog:
+    def __init__(self, name):
+        self.name = name
+
+    def bark(self):
+        return f"{self.name} says woof!"</code></pre>
+    </div>
+  </div>
+  <p>Không khai báo kiểu, không dấu ngoặc nhọn — khối lệnh xác định bằng thụt
+  đầu dòng. Thuộc tính <code>name</code> chỉ xuất hiện khi <code>__init__</code>
+  gán nó vào <code>self</code>.</p>
+
+  <div style="text-align:center; margin: 1.5rem 0;">
+    <svg viewBox="0 0 480 260" width="100%" style="max-width:420px" role="img" aria-labelledby="classDiagramTitle">
+      <title id="classDiagramTitle">Sơ đồ class Dog và hai instance rex, buddy</title>
+      <rect x="150" y="10" width="180" height="55" rx="8" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      <text x="240" y="43" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="16">class Dog</text>
+
+      <line x1="240" y1="65" x2="110" y2="130" stroke="var(--border)" stroke-width="2" marker-end="url(#arrow)"/>
+      <line x1="240" y1="65" x2="370" y2="130" stroke="var(--border)" stroke-width="2" marker-end="url(#arrow)"/>
+
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="var(--border)"/>
+        </marker>
+      </defs>
+
+      <rect x="30" y="135" width="160" height="55" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="110" y="158" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="14">rex</text>
+      <text x="110" y="176" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="12">name: Rex</text>
+
+      <rect x="290" y="135" width="160" height="55" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <text x="370" y="158" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="14">buddy</text>
+      <text x="370" y="176" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="12">name: Buddy</text>
+
+      <text x="240" y="225" text-anchor="middle" fill="var(--muted)" font-size="13">rex.bark() → self = rex &nbsp;|&nbsp; buddy.bark() → self = buddy</text>
+    </svg>
+  </div>
+
+  <h2>2. Tạo object — không có <code>new</code></h2>
+  <pre><code>rex = Dog("Rex")
+print(rex.bark())      # -> Rex says woof!
+print(type(rex))       # -> &lt;class '__main__.Dog'&gt;
+print(rex is Dog("Rex"))  # -> False (hai object khác nhau, dù cùng name)</code></pre>
+  <p>Gọi tên class như gọi hàm (<code>Dog("Rex")</code>) là đủ để tạo object
+  mới, vì class tự nó là một object gọi được (callable) — nó tự tạo instance
+  rồi gọi <code>__init__</code> lên instance đó.</p>
+
+  <h2>3. <code>self</code>: luôn là tham số đầu tiên, luôn tường minh</h2>
+  <div class="callout">
+    Ở nhiều ngôn ngữ, <code>this</code> được ngầm định có sẵn bên trong
+    method. Ở Python, <code>self</code> phải được khai báo tường minh làm
+    <strong>tham số đầu tiên</strong> của mọi method
+    (<code>def bark(self):</code>) — nhưng khi <em>gọi</em>
+    (<code>rex.bark()</code>), bạn không truyền nó, Python tự truyền vào
+    giúp bạn.
+  </div>
+  <p>Một method chỉ là hàm bình thường gắn vào class: <code>rex.bark()</code>
+  là cách viết gọn của <code>Dog.bark(rex)</code>. Kiểm chứng:</p>
+  <pre><code>print(rex.bark())        # -> Rex says woof!
+print(Dog.bark(rex))     # -> Rex says woof! (y hệt, gọi tường minh qua class)</code></pre>
+  <p><code>self</code> chỉ là tham số đầu tiên, nhận giá trị tự động khi gọi
+  qua <code>object.method()</code> — tên gọi là quy ước, không phải từ khóa
+  bắt buộc, nhưng ai cũng dùng <code>self</code>.</p>
+
+  <h2>4. <code>__init__</code>: hàm khởi tạo</h2>
+  <pre><code>class Dog:
+    def __init__(self, name):
+        self.name = name   # gán thuộc tính cho object
+
+rex = Dog("Rex")
+print(rex.name)   # -> Rex</code></pre>
+  <p>Tên 2 gạch dưới đầu-cuối gọi là "dunder method" — hook đặc biệt Python
+  tự gọi. <code>__init__</code> chạy ngay sau khi object đã được tạo, chỉ để
+  thiết lập trạng thái ban đầu, không phải để tạo object.</p>
+
+  <h2>5. Kế thừa vẫn dùng ngoặc đơn, không có <code>extends</code></h2>
+  <pre><code>class Puppy(Dog):
+    def bark(self):
+        return f"{self.name} says yip!"   # override
+
+p = Puppy("Miu")
+print(p.bark())          # -> Miu says yip! (dùng bản override của Puppy)
+print(isinstance(p, Dog))  # -> True (Puppy vẫn là một loại Dog)</code></pre>
+  <p><code>Puppy(Dog)</code> nghĩa là kế thừa từ <code>Dog</code> — ngoặc đơn
+  đóng vai trò <code>extends</code>. Muốn thêm logic khởi tạo riêng mà vẫn
+  tận dụng <code>Dog</code>, gọi tường minh qua <code>super()</code>:</p>
+  <pre><code>class Puppy(Dog):
+    def __init__(self, name, age_months):
+        super().__init__(name)   # chạy __init__ của Dog trước
+        self.age_months = age_months
+
+p = Puppy("Miu", 3)
+print(p.name, p.age_months)   # -> Miu 3</code></pre>
+
+  <h2>6. Vì sao dễ nhầm với ngôn ngữ khác: method không "thuộc về" instance như bạn nghĩ</h2>
+  <p>Method sống trên <strong>class</strong>, không phải trên từng instance —
+  mỗi object chỉ giữ dữ liệu riêng (<code>self.name</code>), code method dùng
+  chung. Quên viết <code>self</code> khi định nghĩa method là lỗi rất hay gặp
+  khi mới chuyển sang Python.</p>
+
+  <p>Tài liệu tra cứu đầy đủ: <a href="../reference/0004-classes-basics.html">Cheat sheet Class cơ bản</a>.
+  Nguồn chính nên đọc song song: <a href="https://docs.python.org/3/tutorial/classes.html">The Python Tutorial §9 — Classes</a>.</p>
+
+  <h2>Tự kiểm tra</h2>
+  <div class="quiz" id="quiz">
+    <div data-q="1">
+      <p class="question">1. Để tạo một object <code>Dog</code> mới, bạn viết:</p>
+      <button data-correct="false" onclick="answer(this)">new Dog("Rex")</button>
+      <button data-correct="true" onclick="answer(this)">Dog("Rex")</button>
+      <button data-correct="false" onclick="answer(this)">Dog.new("Rex")</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="2">
+      <p class="question">2. Khi gọi <code>rex.bark()</code>, ai truyền <code>self</code> vào cho method <code>bark</code>?</p>
+      <button data-correct="false" onclick="answer(this)">Bạn phải tự truyền</button>
+      <button data-correct="true" onclick="answer(this)">Python tự truyền vào</button>
+      <button data-correct="false" onclick="answer(this)">Không cần self ở đây</button>
+      <div class="feedback"></div>
+    </div>
+    <div data-q="3">
+      <p class="question">3. Hàm nào chạy tự động ngay khi một object được tạo?</p>
+      <button data-correct="false" onclick="answer(this)">Hàm __new__</button>
+      <button data-correct="true" onclick="answer(this)">Hàm __init__</button>
+      <button data-correct="false" onclick="answer(this)">Hàm __main__</button>
+      <div class="feedback"></div>
+    </div>
+  </div>
+
+  <p class="ask-teacher">Bí chỗ nào, hoặc muốn đào sâu hơn về phần nào ở
+  trên? Cứ hỏi Claude (giáo viên của bạn) — đó là lý do nó ở đây.</p>
+
+  <div class="nav">
+    <span>← <a href="0003-functions-and-unpacking.html">Bài 3: Functions &amp; Unpacking</a></span>
+    <span>Tiếp theo: <a href="0005-duck-typing-and-dicts.html">Bài 5: Duck Typing &amp; Dict/Set</a> · sau đó có thể xem thêm <a href="0014-python-oop-idioms.html">Bài 14: OOP Idiom của Python</a> →</span>
+  </div>
+</main>
+
+<script>
+function answer(btn) {
+  const container = btn.parentElement;
+  const feedback = container.querySelector('.feedback');
+  const correct = btn.getAttribute('data-correct') === 'true';
+  feedback.textContent = correct ? 'Chính xác.' : 'Chưa đúng — thử lại nhé.';
+  feedback.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+}
+</script>
+</body>
+</html>
