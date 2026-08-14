@@ -79,7 +79,9 @@ class VerifyEmailView(APIView):
 
     @extend_schema(
         summary="Verify email address",
-        description="Confirms a customer's email using the verification token sent after registration.",
+        description=(
+            "Confirms a customer's email using the verification token sent after registration."
+        ),
         request=VerifyEmailSerializer,
         responses=CustomerResponseSerializer,
     )
@@ -98,7 +100,9 @@ class LoginView(APIView):
 
     @extend_schema(
         summary="Log in a customer",
-        description="Authenticates a customer with email and password, returning access and refresh tokens.",
+        description=(
+            "Authenticates a customer with email and password, returning access and refresh tokens."
+        ),
         request=LoginSerializer,
         responses=TokenResponseSerializer,
     )
@@ -117,7 +121,9 @@ class GoogleLoginView(APIView):
 
     @extend_schema(
         summary="Log in with Google",
-        description="Authenticates a customer using a Google ID token, returning access and refresh tokens.",
+        description=(
+            "Authenticates a customer using a Google ID token, returning access and refresh tokens."
+        ),
         request=GoogleLoginSerializer,
         responses=TokenResponseSerializer,
     )
@@ -259,7 +265,9 @@ class ConfirmPasswordResetView(APIView):
 
     @extend_schema(
         summary="Confirm password reset",
-        description="Sets a new password using the reset token and returns the updated customer profile.",
+        description=(
+            "Sets a new password using the reset token and returns the updated customer profile."
+        ),
         request=ConfirmPasswordResetSerializer,
         responses=CustomerResponseSerializer,
     )
@@ -279,7 +287,9 @@ class RequestEmailChangeView(APIView):
 
     @extend_schema(
         summary="Request email change",
-        description="Sends a confirmation link to the new email address for the authenticated customer.",
+        description=(
+            "Sends a confirmation link to the new email address for the authenticated customer."
+        ),
         request=RequestEmailChangeSerializer,
         responses={202: None},
     )

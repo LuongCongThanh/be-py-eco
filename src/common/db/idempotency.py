@@ -25,7 +25,7 @@ class IdempotencyKeyConflict(Exception):
     """Same key, different request body."""
 
 
-def _hash_request(data: dict[str, Any]) -> str:
+def _hash_request(data: dict[str, Any] | list[Any]) -> str:
     canonical = json.dumps(data, sort_keys=True, default=str)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
@@ -36,7 +36,7 @@ def get_cached_response(
     actor_id: str,
     action: str,
     idempotency_key: str,
-    request_data: dict[str, Any],
+    request_data: dict[str, Any] | list[Any],
 ) -> tuple[int, Any] | None:
     """Returns the cached `(status, body)` for a replayed request, `None`
     for a fresh key, or raises `IdempotencyKeyConflict` for key reuse with
@@ -67,7 +67,7 @@ def store_response(
     actor_id: str,
     action: str,
     idempotency_key: str,
-    request_data: dict[str, Any],
+    request_data: dict[str, Any] | list[Any],
     response_status: int,
     response_body: Any,
 ) -> None:

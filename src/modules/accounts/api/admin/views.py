@@ -46,7 +46,10 @@ class StaffLoginView(APIView):
 
     @extend_schema(
         summary="Log in a staff member",
-        description="Authenticates a staff member with email and password, returning access and refresh tokens.",
+        description=(
+            "Authenticates a staff member with email and password, returning access and "
+            "refresh tokens."
+        ),
         request=StaffLoginSerializer,
         responses=TokenResponseSerializer,
     )
@@ -107,7 +110,9 @@ class MfaSetupView(APIView):
 
     @extend_schema(
         summary="Start MFA setup",
-        description="Generates a new TOTP secret and provisioning URI for the authenticated staff member.",
+        description=(
+            "Generates a new TOTP secret and provisioning URI for the authenticated staff member."
+        ),
         request=None,
         responses=MfaSetupResponseSerializer,
     )
@@ -141,7 +146,8 @@ class DisableCustomerView(APIView):
         summary="Disable a customer account",
         description=(
             "Disables the specified customer account and revokes its sessions. Requires an "
-            "audit reason, confirmed MFA on the acting staff member, and an `Idempotency-Key` header."
+            "audit reason, confirmed MFA on the acting staff member, and an `Idempotency-Key` "
+            "header."
         ),
         request=DisableCustomerSerializer,
         responses={204: None},

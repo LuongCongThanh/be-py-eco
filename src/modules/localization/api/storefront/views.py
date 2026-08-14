@@ -19,7 +19,10 @@ class LocaleSuggestionView(APIView):
 
     @extend_schema(
         summary="Suggest locale",
-        description="Suggests a locale, country, and currency for the request based on its IP address/headers.",
+        description=(
+            "Suggests a locale, country, and currency for the request based on its IP "
+            "address/headers."
+        ),
         request=None,
         responses=LocaleSuggestionResponseSerializer,
     )
