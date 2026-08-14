@@ -40,3 +40,10 @@
   ví dụ trực quan cao, văn giải thích ít** — đừng lặp lại việc "thêm giải
   thích dài" khi được yêu cầu "chi tiết hơn"; "chi tiết" nên đến từ nhiều
   ví dụ cụ thể + hình minh họa, không phải nhiều đoạn văn.
+- Phản hồi quan trọng (2026-08-14, sau bài 16): bạn xác nhận đã đọc bài
+  9-16 trong trình duyệt nhưng không nắm được Django cơ bản là gì/làm
+  gì. Xem [[learning-records/0003-coverage-without-retention-even-at-basics]].
+  **Đọc trang HTML không tạo ra retention** — từ giờ, dạy Django/DRF cần
+  đi kèm active recall thật (hỏi lại bằng lời của bạn, không chỉ tạo
+  thêm trang để đọc), và không được coi bài trước là nền đã vững chỉ vì
+  đã "có" file lesson cho nó.
