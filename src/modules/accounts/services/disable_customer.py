@@ -10,6 +10,7 @@ from uuid import UUID
 from common.auth.permissions import check_policy
 from common.observability.request_context import client_ip, request_id
 from modules.accounts.errors import (
+    CustomerNotFoundError,
     InsufficientPermissionError,
     MfaNotConfiguredError,
     ReasonRequiredError,
@@ -31,7 +32,10 @@ def disable_customer(
     if not reason.strip():
         raise ReasonRequiredError
 
-    customer = Customer.objects.get(id=customer_id)
+    try:
+        customer = Customer.objects.get(id=customer_id)
+    except Customer.DoesNotExist:
+        raise CustomerNotFoundError from None
     customer.is_active = False
     customer.save(update_fields=["is_active"])
     revoke_all_sessions(customer=customer)

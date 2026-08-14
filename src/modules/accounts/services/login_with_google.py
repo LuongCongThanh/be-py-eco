@@ -13,7 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from integrations.google_oauth.client import GoogleOAuthError, get_google_oauth_client
-from modules.accounts.errors import InvalidGoogleTokenError
+from modules.accounts.errors import GoogleEmailNotVerifiedError, InvalidGoogleTokenError
 from modules.accounts.models import Customer, LoginMethod
 from modules.accounts.services.sessions import issue_session
 
@@ -35,6 +35,12 @@ def login_with_google(*, id_token: str) -> tuple[Customer, str, str]:
                 email=profile.email,
                 defaults={"email_verified_at": timezone.now() if profile.email_verified else None},
             )
+            if not created and not profile.email_verified:
+                # Refuse to link an unverified Google identity to an existing,
+                # email-matched Customer — Google's email_verified=false means
+                # anyone could claim that address, so linking here would let an
+                # attacker take over the existing account.
+                raise GoogleEmailNotVerifiedError from None
             if not created and profile.email_verified and not customer.is_email_verified:
                 customer.email_verified_at = timezone.now()
                 customer.save(update_fields=["email_verified_at"])

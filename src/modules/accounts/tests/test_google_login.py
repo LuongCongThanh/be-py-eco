@@ -4,7 +4,7 @@ import pytest
 
 from integrations.google_oauth.client import GoogleOAuthError
 from integrations.google_oauth.fake import FakeGoogleOAuthClient
-from modules.accounts.errors import InvalidGoogleTokenError
+from modules.accounts.errors import GoogleEmailNotVerifiedError, InvalidGoogleTokenError
 from modules.accounts.models import Customer, LoginMethod
 from modules.accounts.services.login_with_google import login_with_google
 from modules.accounts.services.register_customer import register_customer
@@ -54,6 +54,18 @@ def test_login_with_google_is_idempotent_for_the_same_google_account() -> None:
 def test_login_with_google_rejects_an_unverifiable_token() -> None:
     with pytest.raises(InvalidGoogleTokenError):
         login_with_google(id_token="not-valid-json")
+
+
+@pytest.mark.django_db
+def test_login_with_google_rejects_unverified_email_matching_an_existing_customer() -> None:
+    register_customer(email="victim@example.com", password="a-strong-password-123")
+
+    with pytest.raises(GoogleEmailNotVerifiedError):
+        login_with_google(
+            id_token=_fake_token("attacker-google", "victim@example.com", email_verified=False)
+        )
+
+    assert LoginMethod.objects.filter(provider=LoginMethod.Provider.GOOGLE).count() == 0
 
 
 def test_fake_google_oauth_client_rejects_malformed_fixtures() -> None:

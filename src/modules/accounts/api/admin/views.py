@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from common.api.envelope import success_envelope
 from common.api.idempotency import remember_response, replay_if_cached, require_idempotency_key
 from common.api.throttling import AuthAccountRateThrottle, AuthIPRateThrottle, AuthUserRateThrottle
+from common.auth.permissions import check_policy
 from modules.accounts.api.admin.serializers import (
     ConfirmMfaSerializer,
     CreateStaffSerializer,
@@ -24,10 +25,17 @@ from modules.accounts.api.admin.serializers import (
 )
 from modules.accounts.api.permissions import IsStaff
 from modules.accounts.api.storefront.serializers import TokenResponseSerializer
+from modules.accounts.errors import InsufficientPermissionError
 from modules.accounts.models import Staff
-from modules.accounts.services.create_staff import create_staff
-from modules.accounts.services.disable_customer import disable_customer
-from modules.accounts.services.mfa import confirm_mfa_setup, reset_staff_mfa, start_mfa_setup
+from modules.accounts.services.create_staff import CREATE_STAFF_CODENAME, create_staff
+from modules.accounts.services.disable_customer import DISABLE_CUSTOMER_CODENAME, disable_customer
+from modules.accounts.services.mfa import (
+    RESET_STAFF_MFA_CODENAME,
+    confirm_mfa_setup,
+    require_confirmed_mfa,
+    reset_staff_mfa,
+    start_mfa_setup,
+)
 from modules.accounts.services.staff_login import login_staff
 
 
@@ -64,6 +72,9 @@ class CreateStaffView(APIView):
     )
     def post(self, request: Request) -> Response:
         actor = cast(Staff, request.user)
+        if not check_policy(role=actor.role, codename=CREATE_STAFF_CODENAME):
+            raise InsufficientPermissionError
+        require_confirmed_mfa(actor)
         idempotency_key = require_idempotency_key(request)
         cached = replay_if_cached(
             request=request,
@@ -137,6 +148,9 @@ class DisableCustomerView(APIView):
     )
     def post(self, request: Request, customer_id: UUID) -> Response:
         actor = cast(Staff, request.user)
+        if not check_policy(role=actor.role, codename=DISABLE_CUSTOMER_CODENAME):
+            raise InsufficientPermissionError
+        require_confirmed_mfa(actor)
         idempotency_key = require_idempotency_key(request)
         cached = replay_if_cached(
             request=request,
@@ -182,6 +196,9 @@ class ResetStaffMfaView(APIView):
     )
     def post(self, request: Request, staff_id: UUID) -> Response:
         actor = cast(Staff, request.user)
+        if not check_policy(role=actor.role, codename=RESET_STAFF_MFA_CODENAME):
+            raise InsufficientPermissionError
+        require_confirmed_mfa(actor)
         idempotency_key = require_idempotency_key(request)
         cached = replay_if_cached(
             request=request,

@@ -95,7 +95,7 @@ def test_master_admin_creates_store_manager_blocked_until_mfa_setup(
         f"/api/v1/admin/customers/{customer_id}/disable",
         {"reason": "Confirmed fraud report"},
         format="json",
-        headers=manager_auth,
+        headers={**manager_auth, "Idempotency-Key": "disable-1"},
     )
     assert allowed_response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -150,7 +150,10 @@ def test_master_admin_resets_a_staff_members_mfa(api_client: APIClient) -> None:
     confirm_mfa_setup(staff=target, token=str(totp(unhexlify(device.key))).zfill(6))
 
     admin_tokens = _staff_login(api_client, master_admin.email, "a-strong-password-123")
-    admin_auth = {"Authorization": f"Bearer {admin_tokens['access']}"}
+    admin_auth = {
+        "Authorization": f"Bearer {admin_tokens['access']}",
+        "Idempotency-Key": "reset-mfa-1",
+    }
 
     response = api_client.post(f"/api/v1/admin/staff/{target.id}/mfa/reset", headers=admin_auth)
 

@@ -102,8 +102,6 @@ jobs:
         run: uv run python manage.py check --database default
 
       - name: Run tests
-        # TODO: temporarily disabled 2026-08-14 (thanh.luongcong) — re-enable once ready.
-        if: false
         run: uv run pytest
 
       - name: Regenerate OpenAPI schema and check for drift

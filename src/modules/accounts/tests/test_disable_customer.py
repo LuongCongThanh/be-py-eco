@@ -1,10 +1,12 @@
 from binascii import unhexlify
 from typing import cast
+from uuid import uuid4
 
 import pytest
 from django_otp.oath import totp
 
 from modules.accounts.errors import (
+    CustomerNotFoundError,
     InsufficientPermissionError,
     MfaNotConfiguredError,
     ReasonRequiredError,
@@ -69,3 +71,12 @@ def test_disable_customer_requires_a_non_empty_reason() -> None:
 
     with pytest.raises(ReasonRequiredError):
         disable_customer(actor=manager, customer_id=result.customer.id, reason="   ")
+
+
+@pytest.mark.django_db
+def test_disable_customer_raises_not_found_for_an_unknown_customer_id() -> None:
+    manager = cast(Staff, StaffFactory(role=Staff.Role.STORE_MANAGER))
+    _confirm_mfa(manager)
+
+    with pytest.raises(CustomerNotFoundError):
+        disable_customer(actor=manager, customer_id=uuid4(), reason="fraud")

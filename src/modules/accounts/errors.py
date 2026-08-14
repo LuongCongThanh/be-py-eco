@@ -39,10 +39,22 @@ class SessionNotFoundError(APIException):
     default_code = "accounts.session_not_found"
 
 
+class CustomerNotFoundError(APIException):
+    status_code = HTTP_404_NOT_FOUND
+    default_detail = "Customer not found."
+    default_code = "accounts.customer_not_found"
+
+
 class InvalidGoogleTokenError(APIException):
     status_code = HTTP_401_UNAUTHORIZED
     default_detail = "Invalid or unverifiable Google ID token."
     default_code = "accounts.invalid_google_token"
+
+
+class GoogleEmailNotVerifiedError(APIException):
+    status_code = HTTP_401_UNAUTHORIZED
+    default_detail = "Google has not verified this email; it cannot be linked to an account."
+    default_code = "accounts.google_email_not_verified"
 
 
 class EmailAlreadyTakenError(APIException):
