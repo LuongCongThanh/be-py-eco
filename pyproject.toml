@@ -22,6 +22,7 @@ dependencies = [
     "django-storages==1.14.6",
     "djangorestframework==3.18.0",
     "djangorestframework-simplejwt==5.5.1",
+    "djangorestframework-stubs>=3.18.0",
     "drf-spectacular==0.30.0",
     "drf-standardized-errors==0.16.0",
     "filetype==1.2.0",
@@ -58,10 +59,16 @@ dev = [
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 pythonpath = ["src"]
 
+# Test files (src/modules/*/tests/, per guild.md's module layout) routinely
+# use `assert` and literal fixture passwords/tokens — both are false
+# positives bandit exists to catch in production code, not test code.
+[tool.bandit]
+exclude_dirs = ["tests"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-extend-exclude = [".agents", ".claude"]
+extend-exclude = [".agents", ".claude", "*/migrations/*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "DJ"]

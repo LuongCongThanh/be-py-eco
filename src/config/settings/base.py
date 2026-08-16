@@ -4,6 +4,7 @@ Every value is read from the environment via django-environ; nothing here
 hard-codes a value that would work "by accident" in production.
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -59,12 +60,19 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "django_celery_beat",
+    "django_countries",
     "storages",
+    "common.db",
+    "modules.accounts",
+    "modules.audit",
+    "modules.localization",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "common.observability.middleware.RequestIDMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -109,6 +117,62 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Placeholder transactional email — templated/localized send is Slice 7.
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@be-py-eco.local")
+
+# integrations/google_oauth — adapter selected via config, per guild.md §7.6.
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
+GOOGLE_OAUTH_CLIENT_CLASS = env(
+    "GOOGLE_OAUTH_CLIENT_CLASS",
+    default="integrations.google_oauth.client.HttpGoogleOAuthClient",
+)
+
+# common/api — envelope + Problem Details error shape (guild.md §5.3/§5.4),
+# established here so every later module reuses it unchanged.
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "common.api.exceptions.exception_handler",
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": ["common.auth.authentication.JWTAuthentication"],
+    # Placeholder rates for local dev/test only — guild.md §16 requires
+    # concrete rate limits to be decided via a dedicated ticket, not
+    # invented in code. Override per-environment via these env vars.
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_ip": env("THROTTLE_RATE_AUTH_IP", default="20/min"),
+        "auth_account": env("THROTTLE_RATE_AUTH_ACCOUNT", default="5/min"),
+    },
+}
+
+# Customer JWTs: 10-15 min access, rotating/revocable refresh (guild.md §6.1).
+# Refresh rotation + hashed session storage land in a later commit.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+# Argon2 first — guild.md §6.1. Django tries hashers in this order and
+# upgrades existing hashes on next successful login (PBKDF2 kept as fallback
+# for verifying already-hashed passwords, not for new ones).
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+
+# drf-spectacular — OpenAPI 3.1 schema at /api/v1/schema/, committed to
+# docs/api/openapi.yaml (guild.md §5.7). SCHEMA_PATH_PREFIX groups tags by
+# the first path segment after the version, e.g. /api/v1/storefront/products.
+SPECTACULAR_SETTINGS = {
+    "TITLE": "be-py-eco API",
+    "DESCRIPTION": "E-commerce backend API for be-py-eco.",
+    "VERSION": "1.0.0",
+    "OAS_VERSION": "3.1.0",
+    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
 
 # Structured JSON logging (common/observability). Real Sentry DSN / Prometheus
 # scrape endpoints are out of scope for this slice — only the JSON log
