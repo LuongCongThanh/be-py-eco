@@ -21,6 +21,12 @@ class CategoryNotFoundError(APIException):
     default_code = "catalog.category_not_found"
 
 
+class ProductNotFoundError(APIException):
+    status_code = HTTP_404_NOT_FOUND
+    default_detail = "Product not found."
+    default_code = "catalog.product_not_found"
+
+
 class PrimaryCategoryNotInCategoriesError(APIException):
     status_code = HTTP_400_BAD_REQUEST
     default_detail = "A Product's primary Category must be one of its assigned Categories."
@@ -46,3 +52,21 @@ class HardDeleteNotAllowedError(APIException):
         "Archive it instead."
     )
     default_code = "catalog.hard_delete_not_allowed"
+
+
+class IncompleteDefaultLocaleContentError(APIException):
+    status_code = HTTP_409_CONFLICT
+    default_detail = "The Product is missing required content in the default locale."
+    default_code = "catalog.incomplete_default_locale_content"
+
+
+class NoSellableVariantError(APIException):
+    status_code = HTTP_409_CONFLICT
+    default_detail = "The Product must have at least one non-archived Variant to publish."
+    default_code = "catalog.no_sellable_variant"
+
+
+class NoReadyMediaError(APIException):
+    status_code = HTTP_409_CONFLICT
+    default_detail = "The Product must have at least one ready media asset to publish."
+    default_code = "catalog.no_ready_media"

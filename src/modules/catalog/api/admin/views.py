@@ -10,15 +10,13 @@ from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
 from modules.accounts.api.permissions import IsStaff
-from modules.catalog.api.admin.serializers import CategoryDetailSerializer
-from modules.catalog.errors import CategoryNotFoundError
+from modules.catalog.api.admin.serializers import CategoryDetailSerializer, ProductDetailSerializer
+from modules.catalog.constants import DEFAULT_LOCALE
+from modules.catalog.errors import CategoryNotFoundError, ProductNotFoundError
 from modules.catalog.models.category import Category
+from modules.catalog.models.product import Product
+from modules.catalog.services.publish_product import publish_product
 from modules.translation.selectors.get_localized_field import get_localized_field
-
-# guild.md §2 — launch is Vietnam-only; `vi` is the default locale a
-# missing translation falls back to. Slice 11 makes this configurable
-# per Supported Country instead of a module constant.
-DEFAULT_LOCALE = "vi"
 
 
 class CategoryDetailView(APIView):
@@ -55,4 +53,33 @@ class CategoryDetailView(APIView):
                 "is_fallback": name.is_fallback,
             },
         }
+        return Response(success_envelope(data, request=request))
+
+
+class ProductPublishView(APIView):
+    """`publish` is a dedicated action, not a generic `PATCH status` —
+    guild.md §15 Slice 2, commit 7. Fails with a specific error code per
+    missing precondition; the media-readiness check is a stub until
+    commit 12 wires the real `media` module in."""
+
+    permission_classes = [IsAuthenticated, IsStaff]
+
+    @extend_schema(
+        summary="Publish a Product",
+        description=(
+            "Transitions a Product to active. Fails with 409 and a precondition-specific "
+            "error code if default-locale content is incomplete, there's no sellable "
+            "Variant, or no ready media asset exists."
+        ),
+        request=None,
+        responses=ProductDetailSerializer,
+    )
+    def post(self, request: Request, product_id: UUID) -> Response:
+        try:
+            product = Product.objects.get(pk=product_id)
+        except Product.DoesNotExist as exc:
+            raise ProductNotFoundError() from exc
+
+        publish_product(product=product)
+        data = {"id": product.id, "status": product.status}
         return Response(success_envelope(data, request=request))

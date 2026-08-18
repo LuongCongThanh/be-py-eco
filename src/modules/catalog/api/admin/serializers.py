@@ -18,3 +18,10 @@ class CategoryDetailSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     parent_id = serializers.UUIDField(allow_null=True)
     name = LocalizedFieldSerializer()
+
+
+class ProductDetailSerializer(serializers.Serializer):
+    """Response shape only — used for OpenAPI docs, not for validation."""
+
+    id = serializers.UUIDField()
+    status = serializers.CharField()
