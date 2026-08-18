@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "modules.audit",
     "modules.catalog",
     "modules.localization",
+    "modules.media",
     "modules.translation",
 ]
 
