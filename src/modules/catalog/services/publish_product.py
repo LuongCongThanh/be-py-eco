@@ -1,14 +1,15 @@
-"""Publish a Product — guild.md §15 Slice 2, commit 7. A dedicated action
-(not a generic `PATCH status`) so publication can enforce its own
-preconditions: complete default-locale content, ≥1 sellable (non-archived)
-Variant, and ≥1 `ready` media asset.
+"""Publish a Product — guild.md §15 Slice 2, commit 7 (commit 12 wires in
+the real media check). A dedicated action (not a generic `PATCH status`)
+so publication can enforce its own preconditions: complete default-locale
+content, ≥1 sellable (non-archived) Variant, and ≥1 `ready` media asset.
 
-The media-readiness check is a stub (`_STUB_HAS_READY_MEDIA` — always
-`False`) until the `media` module lands in commit 8+; commit 12 replaces
-the default with a real check against `MediaUpload`. `has_ready_media` is
-an injectable seam so this commit's precondition contract — and its
-tests — are locked in before the dependency it checks even exists (Issue
-#7's Decision Document).
+`_default_has_ready_media` reads `Product.media_uploads` — a reverse
+accessor from `media.MediaUpload.product` — without this module importing
+anything from `media`, keeping the dependency one-directional (media
+depends on catalog, not vice versa). `has_ready_media` stays an
+injectable seam (it was the only way to test this precondition in commit
+7, before `media` existed) but now defaults to the real check instead of
+commit 7's always-`False` stub.
 """
 
 from __future__ import annotations
@@ -26,9 +27,19 @@ from modules.translation.selectors.entries_for_entity import entries_for_entity
 
 HasReadyMedia = Callable[[Product], bool]
 
+# Mirrors media.MediaUploadStatus.READY's value as a literal, rather than
+# importing that enum, to keep this module's dependency on `media` limited
+# to the reverse ORM accessor Django wires up from MediaUpload.product.
+_READY_MEDIA_STATUS = "ready"
 
-def _stub_has_ready_media(product: Product) -> bool:
-    return False
+
+def _default_has_ready_media(product: Product) -> bool:
+    # media_uploads is Django's reverse accessor for media.MediaUpload.product
+    # (related_name="media_uploads"); mypy/django-stubs can't see it from
+    # here without catalog importing media, which is exactly the coupling
+    # this accessor is meant to avoid.
+    media_uploads = product.media_uploads  # type: ignore[attr-defined]
+    return media_uploads.filter(status=_READY_MEDIA_STATUS).exists()
 
 
 def _has_complete_default_locale_content(product: Product) -> bool:
@@ -47,7 +58,7 @@ def _has_sellable_variant(product: Product) -> bool:
 def publish_product(
     *,
     product: Product,
-    has_ready_media: HasReadyMedia = _stub_has_ready_media,
+    has_ready_media: HasReadyMedia = _default_has_ready_media,
 ) -> Product:
     if not _has_complete_default_locale_content(product):
         raise IncompleteDefaultLocaleContentError()

@@ -8,6 +8,13 @@ content type) so nothing about the storage path is attacker-controlled.
 The three `*_key` fields (commit 10) point at the public, non-quarantine
 derivatives generated once an upload passes validation and the malware
 scan; they stay blank until `status` is `ready`.
+
+`product` (commit 12) is set once a Store Manager attaches a `ready`
+asset to a Product — `catalog.services.publish_product` reads it back via
+the reverse `product.media_uploads` accessor without `catalog` importing
+anything from `media`, keeping the dependency one-directional
+(media depends on catalog, not vice versa — same choice made for
+`translation` in commit 4).
 """
 
 from __future__ import annotations
@@ -36,6 +43,13 @@ class MediaUpload(BaseModel):
     webp_key = models.CharField(max_length=255, blank=True, default="")
     avif_key = models.CharField(max_length=255, blank=True, default="")
     thumbnail_key = models.CharField(max_length=255, blank=True, default="")
+    product = models.ForeignKey(
+        "catalog.Product",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="media_uploads",
+    )
 
     class Meta:
         db_table = "media_upload"

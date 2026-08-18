@@ -51,7 +51,8 @@ def test_publish_fails_when_only_variant_is_archived() -> None:
 
 
 @pytest.mark.django_db
-def test_publish_fails_without_ready_media_stub() -> None:
+def test_publish_fails_without_any_attached_media() -> None:
+    """Uses the real (commit 12) default check, not an injected override."""
     product = _make_product()
     set_translation(entity=product, locale="vi", field="name", value="Áo thun")
     create_variant(product=product, sku="SKU-PUB-3", base_price_vnd=1000, weight_grams=1)
