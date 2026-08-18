@@ -6,12 +6,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
-from integrations.opensearch.client import get_opensearch_client
 from modules.catalog.constants import DEFAULT_LOCALE
 from modules.pricing.constants import BASE_CURRENCY
 from modules.pricing.selectors.get_converted_price import get_converted_price
-from modules.search.mapping import index_name
-from modules.search.selectors.search_query import build_search_query
+from modules.search.selectors.search_query import build_autocomplete_query, build_search_query
+from modules.search.services.execute_search import execute_search
 
 _ALLOWED_LOCALES = ("vi", "en")
 
@@ -25,6 +24,26 @@ def _resolve_locale(request: Request) -> str:
         if lang in _ALLOWED_LOCALES:
             return lang
     return DEFAULT_LOCALE
+
+
+def _with_converted_price(hits: list[dict], currency: str) -> list[dict]:
+    """Re-derives each hit's price from the still-VND `base_price_vnd`
+    field rather than trusting anything already baked into the index — an
+    already-converted price would go stale the moment the rate changes
+    without a reindex."""
+    documents = []
+    for hit in hits:
+        document = dict(hit)
+        price = get_converted_price(
+            base_price_vnd=document.get("base_price_vnd"), target_currency=currency
+        )
+        document["price"] = {
+            "amount": price.amount,
+            "currency": price.currency,
+            "is_stale": price.is_stale,
+        }
+        documents.append(document)
+    return documents
 
 
 class ProductSearchView(APIView):
@@ -51,24 +70,20 @@ class ProductSearchView(APIView):
             sort=params.get("sort", "relevance"),
         )
 
-        client = get_opensearch_client()
-        result = client.search(index=index_name(locale), body=body)
-        hits = []
-        for hit in result["hits"]["hits"]:
-            document = dict(hit["_source"])
-            # Search-result prices are re-derived from the still-VND
-            # base_price_vnd field, never trusted as already-converted —
-            # this is the same conversion path Product detail uses, kept
-            # here rather than baked into the index (an already-converted
-            # price would go stale the moment the rate changes without a
-            # reindex).
-            price = get_converted_price(
-                base_price_vnd=document.get("base_price_vnd"), target_currency=currency
-            )
-            document["price"] = {
-                "amount": price.amount,
-                "currency": price.currency,
-                "is_stale": price.is_stale,
-            }
-            hits.append(document)
+        hits = execute_search(locale=locale, body=body)
+        return Response(success_envelope(_with_converted_price(hits, currency), request=request))
+
+
+class ProductAutocompleteView(APIView):
+    """Prefix-match suggestions — guild.md §15 Slice 3, commit 3 /
+    Directory Structure (`api/storefront/ # search, autocomplete`)."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        locale = _resolve_locale(request)
+        prefix = request.query_params.get("q", "")
+        body = build_autocomplete_query(prefix)
+
+        hits = execute_search(locale=locale, body=body)
         return Response(success_envelope(hits, request=request))

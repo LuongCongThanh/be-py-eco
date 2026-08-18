@@ -8,7 +8,8 @@ from modules.search.selectors.search_query import build_autocomplete_query, buil
 def test_text_query_uses_fuzziness_for_typo_tolerance() -> None:
     body = build_search_query(text="ao thun")
 
-    multi_match = body["query"]["bool"]["must"][0]["multi_match"]
+    should = body["query"]["bool"]["should"]
+    multi_match = next(c["multi_match"] for c in should if "multi_match" in c)
     assert multi_match["fuzziness"] == "AUTO"
     assert multi_match["fields"] == ["name"]
 
@@ -17,9 +18,20 @@ def test_exact_sku_and_barcode_are_boosted_should_clauses() -> None:
     body = build_search_query(text="SKU-123")
 
     should = body["query"]["bool"]["should"]
-    boosts = {clause["term"]["sku"]["boost"] for clause in should if "sku" in clause["term"]}
+    boosts = {
+        clause["term"]["sku"]["boost"] for clause in should if "sku" in clause.get("term", {})
+    }
     assert boosts == {1000}
-    assert body["query"]["bool"]["minimum_should_match"] == 0
+    assert body["query"]["bool"]["minimum_should_match"] == 1
+
+
+def test_exact_sku_match_alone_is_not_excluded_by_the_fuzzy_clause() -> None:
+    """The fuzzy text clause must not be a `must` — a document whose SKU
+    matches exactly but whose name doesn't fuzzy-match the query text
+    must still be a candidate match, not filtered out entirely."""
+    body = build_search_query(text="ABC-999")
+
+    assert "must" not in body["query"]["bool"]
 
 
 def test_no_text_produces_match_all_without_filters() -> None:

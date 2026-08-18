@@ -21,9 +21,9 @@ SORT_CLAUSES: dict[str, list[dict[str, Any]] | None] = {
 }
 
 # An exact SKU/barcode match should outrank any fuzzy text score — commit
-# 5. A large boost on a `should` clause plus `minimum_should_match: 0`
-# means it's purely additive: it never excludes a document that fails to
-# match exactly, just ranks an exact match first when one exists.
+# 5. A large boost on its `should` clause means it ranks first among
+# results that already match (exact or fuzzy) via minimum_should_match: 1
+# below, without needing a separate query path.
 _EXACT_MATCH_BOOST = 1000
 
 
@@ -38,14 +38,19 @@ def build_search_query(
     available_only: bool = False,
     sort: str = "relevance",
 ) -> dict[str, Any]:
-    must: list[dict[str, Any]] = []
     should: list[dict[str, Any]] = []
     filters: list[dict[str, Any]] = []
 
     if text:
+        # All three clauses live in `should` with minimum_should_match: 1
+        # (at least one must match) rather than putting the fuzzy
+        # multi_match in `must` — a `must` clause would silently exclude
+        # a document whose SKU matches exactly but whose name doesn't
+        # fuzzy-match the query text, defeating the exact-match boost
+        # instead of just outranking with it.
         should.append({"term": {"sku": {"value": text, "boost": _EXACT_MATCH_BOOST}}})
         should.append({"term": {"barcode": {"value": text, "boost": _EXACT_MATCH_BOOST}}})
-        must.append(
+        should.append(
             {
                 "multi_match": {
                     "query": text,
@@ -72,11 +77,9 @@ def build_search_query(
         filters.append({"term": {"is_available": True}})
 
     bool_query: dict[str, Any] = {}
-    if must:
-        bool_query["must"] = must
     if should:
         bool_query["should"] = should
-        bool_query["minimum_should_match"] = 0
+        bool_query["minimum_should_match"] = 1
     if filters:
         bool_query["filter"] = filters
 

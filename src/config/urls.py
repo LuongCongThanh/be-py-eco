@@ -19,6 +19,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
     path("api/v1/admin/", include("modules.accounts.api.admin.urls")),
     path("api/v1/admin/catalog/", include("modules.catalog.api.admin.urls")),
     path("api/v1/admin/media/", include("modules.media.api.admin.urls")),
+    path("api/v1/admin/pricing/", include("modules.pricing.api.admin.urls")),
     path("health/live", health.live, name="health-live"),
     path("health/ready", health.ready, name="health-ready"),
 ]

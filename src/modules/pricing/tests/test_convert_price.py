@@ -9,7 +9,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from modules.pricing.services.convert_price import UnsupportedCurrencyError, convert_price
+from modules.pricing.errors import UnsupportedCurrencyError
+from modules.pricing.services.convert_price import convert_price
 
 _prices = st.integers(min_value=0, max_value=10**12)
 _rates = st.decimals(

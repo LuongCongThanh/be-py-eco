@@ -7,9 +7,16 @@ diverge.
 `register_handler`/`dispatch_pending_events` are the read/consume side,
 added in guild.md §15 Slice 3, commit 2 for `search`'s index sync — the
 first real consumer (Slice 2's Decision Document flagged this as a
-producer-only slice). Delivery is at-least-once: a handler that raises
-leaves its event undispatched for the next run, so every handler must be
-idempotent (e.g. `index_product`'s upsert-by-id).
+producer-only slice).
+
+Delivery is at-least-once **up to the handler call returning** — a
+handler that raises leaves its event undispatched for the next run, so
+every handler must be idempotent (e.g. `index_product`'s upsert-by-id).
+For a handler that just enqueues further async work (as `search`'s does,
+via `.delay()`), this only guarantees the enqueue happened at least once;
+it says nothing about whether the enqueued Celery task itself eventually
+succeeds — that reliability boundary belongs to Celery's own retry/ack
+configuration on the task, not to this dispatcher.
 """
 
 from __future__ import annotations

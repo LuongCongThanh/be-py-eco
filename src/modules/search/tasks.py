@@ -6,6 +6,13 @@ never called synchronously from the originating request.
 Upserting by `product_id` (OpenSearch's document `id`) makes this
 idempotent under at-least-once outbox delivery: re-indexing the same
 Product just overwrites the same document.
+
+`acks_late=True` + `autoretry_for`/`retry_backoff` close the gap the
+outbox dispatcher explicitly doesn't cover (`common.db.outbox`'s
+docstring): the outbox only guarantees this task gets *enqueued* at
+least once, not that a worker crash mid-run doesn't lose it — Celery's
+own late-ack plus retry-with-backoff is what makes the task itself
+durable once queued.
 """
 
 from __future__ import annotations
@@ -20,7 +27,13 @@ from modules.search.services.ensure_index import ensure_index
 SUPPORTED_LOCALES = ("vi", "en")
 
 
-@shared_task(name="search.index_product")
+@shared_task(
+    name="search.index_product",
+    acks_late=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=5,
+)
 def index_product(product_id: str) -> None:
     try:
         product = Product.objects.get(pk=product_id)

@@ -16,17 +16,14 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal
 
 from modules.pricing.constants import CURRENCY_MINOR_UNIT_EXPONENTS
-
-
-class UnsupportedCurrencyError(Exception):
-    """Raised for a target currency with no configured minor-unit exponent."""
+from modules.pricing.errors import UnsupportedCurrencyError
 
 
 def convert_price(*, base_price_vnd: int, rate: Decimal, target_currency: str) -> int:
-    """`rate` is VND-per-1-unit-of `target_currency`'s major denomination
-    (matching `integrations.exchange_rate`'s `Rate.rate` — e.g.
-    VND->USD's rate is USD per VND). Returns an integer count of
-    `target_currency`'s minor unit, rounded half-up.
+    """`rate` is `target_currency`'s major-unit amount per 1 VND (matching
+    `integrations.exchange_rate`'s `Rate.rate` — e.g. VND->USD's rate is
+    USD per VND, so `base_price_vnd * rate` is already in USD). Returns
+    an integer count of `target_currency`'s minor unit, rounded half-up.
     """
     if target_currency not in CURRENCY_MINOR_UNIT_EXPONENTS:
         raise UnsupportedCurrencyError(target_currency)
