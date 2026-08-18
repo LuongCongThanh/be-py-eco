@@ -11,6 +11,7 @@ from django.db import models
 from common.db.models import BaseModel
 from modules.catalog.models.brand import Brand
 from modules.catalog.models.category import Category
+from modules.catalog.models.no_hard_delete import NoHardDeleteModel
 
 
 class ProductStatus(models.TextChoices):
@@ -20,7 +21,7 @@ class ProductStatus(models.TextChoices):
     ARCHIVED = "archived", "Archived"
 
 
-class Product(BaseModel):
+class Product(NoHardDeleteModel, BaseModel):
     status = models.CharField(
         max_length=20,
         choices=ProductStatus.choices,

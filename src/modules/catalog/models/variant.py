@@ -15,10 +15,11 @@ from django.db import models
 
 from common.db.models import BaseModel
 from modules.catalog.models.attribute import AttributeValue
+from modules.catalog.models.no_hard_delete import NoHardDeleteModel
 from modules.catalog.models.product import Product
 
 
-class Variant(BaseModel):
+class Variant(NoHardDeleteModel, BaseModel):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="variants")
     sku = models.CharField(max_length=64, unique=True)
     barcode = models.CharField(max_length=64, unique=True, null=True, blank=True)

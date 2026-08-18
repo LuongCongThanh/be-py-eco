@@ -37,3 +37,12 @@ class DuplicateAttributeCombinationError(APIException):
     status_code = HTTP_409_CONFLICT
     default_detail = "Another Variant of this Product already has this Attribute combination."
     default_code = "catalog.duplicate_attribute_combination"
+
+
+class HardDeleteNotAllowedError(APIException):
+    status_code = HTTP_409_CONFLICT
+    default_detail = (
+        "This record can never be hard-deleted, even if no Order references it yet. "
+        "Archive it instead."
+    )
+    default_code = "catalog.hard_delete_not_allowed"
