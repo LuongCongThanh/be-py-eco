@@ -13,6 +13,7 @@ urlpatterns: list[URLPattern | URLResolver] = [
         name="swagger-ui",
     ),
     path("api/v1/storefront/accounts/", include("modules.accounts.api.storefront.urls")),
+    path("api/v1/storefront/catalog/", include("modules.catalog.api.storefront.urls")),
     path("api/v1/storefront/localization/", include("modules.localization.api.storefront.urls")),
     path("api/v1/admin/", include("modules.accounts.api.admin.urls")),
     path("api/v1/admin/catalog/", include("modules.catalog.api.admin.urls")),
