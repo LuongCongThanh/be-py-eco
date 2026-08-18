@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 from common.api.envelope import success_envelope
 from integrations.opensearch.client import get_opensearch_client
 from modules.catalog.constants import DEFAULT_LOCALE
+from modules.pricing.constants import BASE_CURRENCY
+from modules.pricing.selectors.get_converted_price import get_converted_price
 from modules.search.mapping import index_name
 from modules.search.selectors.search_query import build_search_query
 
@@ -35,6 +37,7 @@ class ProductSearchView(APIView):
 
     def get(self, request: Request) -> Response:
         locale = _resolve_locale(request)
+        currency = request.query_params.get("currency", BASE_CURRENCY)
         params = request.query_params
         attribute_value_ids = params.getlist("attribute_value_id") or None
         body = build_search_query(
@@ -50,5 +53,22 @@ class ProductSearchView(APIView):
 
         client = get_opensearch_client()
         result = client.search(index=index_name(locale), body=body)
-        hits = [hit["_source"] for hit in result["hits"]["hits"]]
+        hits = []
+        for hit in result["hits"]["hits"]:
+            document = dict(hit["_source"])
+            # Search-result prices are re-derived from the still-VND
+            # base_price_vnd field, never trusted as already-converted —
+            # this is the same conversion path Product detail uses, kept
+            # here rather than baked into the index (an already-converted
+            # price would go stale the moment the rate changes without a
+            # reindex).
+            price = get_converted_price(
+                base_price_vnd=document.get("base_price_vnd"), target_currency=currency
+            )
+            document["price"] = {
+                "amount": price.amount,
+                "currency": price.currency,
+                "is_stale": price.is_stale,
+            }
+            hits.append(document)
         return Response(success_envelope(hits, request=request))
