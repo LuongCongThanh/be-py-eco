@@ -40,6 +40,20 @@ CELERY_RESULT_BACKEND = env("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TIMEZONE = "UTC"  # matches TIME_ZONE below
 
+# guild.md §15 Slice 3 — periodic jobs. The outbox dispatcher (commit 2)
+# and the Exchange Rate sync (commit 8) are both polling/scheduled work,
+# not triggered inline by a request.
+CELERY_BEAT_SCHEDULE = {
+    "dispatch-outbox-events": {
+        "task": "common_db.dispatch_outbox_events",
+        "schedule": 5.0,  # seconds
+    },
+    "sync-exchange-rates": {
+        "task": "pricing.sync_exchange_rates",
+        "schedule": 3600.0,  # hourly
+    },
+}
+
 # MinIO (S3-compatible) via django-storages — the existing abstraction media
 # will consume in Slice 2, rather than a custom client wrapper.
 STORAGES = {
@@ -70,6 +84,7 @@ INSTALLED_APPS = [
     "modules.catalog",
     "modules.localization",
     "modules.media",
+    "modules.search",
     "modules.translation",
 ]
 
