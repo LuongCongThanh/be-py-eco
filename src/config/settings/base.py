@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "common.db",
     "modules.accounts",
     "modules.audit",
+    "modules.catalog",
     "modules.localization",
 ]
 
