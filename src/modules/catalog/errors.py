@@ -19,3 +19,9 @@ class CategoryNotFoundError(APIException):
     status_code = HTTP_404_NOT_FOUND
     default_detail = "Category not found."
     default_code = "catalog.category_not_found"
+
+
+class PrimaryCategoryNotInCategoriesError(APIException):
+    status_code = HTTP_400_BAD_REQUEST
+    default_detail = "A Product's primary Category must be one of its assigned Categories."
+    default_code = "catalog.primary_category_not_in_categories"
