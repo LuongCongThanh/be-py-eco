@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     "modules.catalog",
     "modules.localization",
     "modules.media",
+    "modules.pricing",
     "modules.search",
     "modules.translation",
 ]
@@ -152,6 +153,16 @@ GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
 GOOGLE_OAUTH_CLIENT_CLASS = env(
     "GOOGLE_OAUTH_CLIENT_CLASS",
     default="integrations.google_oauth.client.HttpGoogleOAuthClient",
+)
+
+# integrations/exchange_rate — adapter selected via config, per guild.md
+# §7.6. Unlike GOOGLE_OAUTH_CLIENT_CLASS, there is no real implementation
+# to default to yet: the production provider is an explicit pending
+# decision (guild.md §16), so the fake is the default everywhere until
+# one is chosen.
+EXCHANGE_RATE_PROVIDER_CLASS = env(
+    "EXCHANGE_RATE_PROVIDER_CLASS",
+    default="integrations.exchange_rate.fake.FakeExchangeRateProvider",
 )
 
 # common/api — envelope + Problem Details error shape (guild.md §5.3/§5.4),
