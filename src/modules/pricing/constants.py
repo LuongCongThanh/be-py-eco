@@ -12,3 +12,11 @@ SUPPORTED_TARGET_CURRENCIES = ["USD"]
 # consumer must flag it as stale (commit 11) — not a checkout block,
 # that's Slice 5.
 RATE_TTL_SECONDS = 3600
+
+# Minor-unit decimal exponent per currency — VND has no minor unit (0
+# decimal places), USD is cents (2). Money is always an integer count of
+# this unit, never a float; guild.md §10.3.
+CURRENCY_MINOR_UNIT_EXPONENTS: dict[str, int] = {
+    "VND": 0,
+    "USD": 2,
+}
