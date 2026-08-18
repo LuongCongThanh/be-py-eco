@@ -6,7 +6,7 @@ services and turned into Problem Details by common/api/exceptions.py.
 from __future__ import annotations
 
 from rest_framework.exceptions import APIException
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_409_CONFLICT
 
 
 class CategoryCycleError(APIException):
@@ -25,3 +25,15 @@ class PrimaryCategoryNotInCategoriesError(APIException):
     status_code = HTTP_400_BAD_REQUEST
     default_detail = "A Product's primary Category must be one of its assigned Categories."
     default_code = "catalog.primary_category_not_in_categories"
+
+
+class DuplicateAttributeError(APIException):
+    status_code = HTTP_400_BAD_REQUEST
+    default_detail = "Only one value per Attribute is allowed on a Variant."
+    default_code = "catalog.duplicate_attribute"
+
+
+class DuplicateAttributeCombinationError(APIException):
+    status_code = HTTP_409_CONFLICT
+    default_detail = "Another Variant of this Product already has this Attribute combination."
+    default_code = "catalog.duplicate_attribute_combination"
