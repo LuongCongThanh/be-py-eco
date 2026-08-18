@@ -16,6 +16,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from django.db import transaction
+
+from common.db.outbox import emit_event
 from modules.catalog.constants import DEFAULT_LOCALE, REQUIRED_TRANSLATION_FIELDS
 from modules.catalog.errors import (
     IncompleteDefaultLocaleContentError,
@@ -24,6 +27,8 @@ from modules.catalog.errors import (
 )
 from modules.catalog.models.product import Product, ProductStatus
 from modules.translation.selectors.entries_for_entity import entries_for_entity
+
+PRODUCT_PUBLISHED_EVENT = "catalog.ProductPublished"
 
 HasReadyMedia = Callable[[Product], bool]
 
@@ -67,6 +72,14 @@ def publish_product(
     if not has_ready_media(product):
         raise NoReadyMediaError()
 
-    product.status = ProductStatus.ACTIVE
-    product.save(update_fields=["status", "updated_at"])
+    with transaction.atomic():
+        product.status = ProductStatus.ACTIVE
+        product.save(update_fields=["status", "updated_at"])
+        # guild.md §15 Slice 2, commit 14 — no consumer exists until
+        # Slice 3's search sync; this only proves the producer side
+        # commits atomically with the Product change.
+        emit_event(
+            event_type=PRODUCT_PUBLISHED_EVENT,
+            payload={"product_id": str(product.id)},
+        )
     return product
