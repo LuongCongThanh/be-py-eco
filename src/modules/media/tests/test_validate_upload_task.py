@@ -1,7 +1,8 @@
-"""Integration test: validate_upload against a real MinIO object — Issue
-#7 commit 9. Requires the local infra stack (see tests/test_storage.py
-for the same bucket-provisioning pattern); it is not mocked because the
-interesting behavior here is the storage round trip, not the request.
+"""Integration tests for the upload processing pipeline — Issue #7
+commits 9-11. Require the local infra stack (real MinIO + ClamAV, per
+guild.md §10.1); they are not mocked because the interesting behavior
+happens inside the worker's storage/scan round trip, not the request.
+Same bucket-provisioning pattern as tests/test_storage.py.
 """
 
 import io
@@ -53,3 +54,53 @@ def test_mislabeled_upload_is_rejected() -> None:
         assert credential.media_upload.rejection_reason
     finally:
         default_storage.delete(credential.media_upload.storage_key)
+
+
+@pytest.mark.django_db
+def test_clean_image_ends_ready_with_derivatives() -> None:
+    data = _png_bytes()
+    credential = request_upload(content_type="image/png", size_bytes=len(data))
+    default_storage.save(credential.media_upload.storage_key, ContentFile(data))
+
+    try:
+        validate_upload(str(credential.media_upload.id))
+
+        credential.media_upload.refresh_from_db()
+        assert credential.media_upload.status == MediaUploadStatus.READY
+        assert default_storage.exists(credential.media_upload.webp_key)
+        assert default_storage.exists(credential.media_upload.avif_key)
+        assert default_storage.exists(credential.media_upload.thumbnail_key)
+    finally:
+        default_storage.delete(credential.media_upload.storage_key)
+        if credential.media_upload.webp_key:
+            default_storage.delete(credential.media_upload.webp_key)
+        if credential.media_upload.avif_key:
+            default_storage.delete(credential.media_upload.avif_key)
+        if credential.media_upload.thumbnail_key:
+            default_storage.delete(credential.media_upload.thumbnail_key)
+
+
+@pytest.mark.django_db
+def test_duplicate_object_created_event_does_not_reprocess() -> None:
+    data = _png_bytes()
+    credential = request_upload(content_type="image/png", size_bytes=len(data))
+    default_storage.save(credential.media_upload.storage_key, ContentFile(data))
+
+    try:
+        validate_upload(str(credential.media_upload.id))
+        credential.media_upload.refresh_from_db()
+        first_webp_key = credential.media_upload.webp_key
+
+        # A duplicate delivery of the same object-created event.
+        validate_upload(str(credential.media_upload.id))
+        credential.media_upload.refresh_from_db()
+
+        assert credential.media_upload.webp_key == first_webp_key
+    finally:
+        default_storage.delete(credential.media_upload.storage_key)
+        if credential.media_upload.webp_key:
+            default_storage.delete(credential.media_upload.webp_key)
+        if credential.media_upload.avif_key:
+            default_storage.delete(credential.media_upload.avif_key)
+        if credential.media_upload.thumbnail_key:
+            default_storage.delete(credential.media_upload.thumbnail_key)

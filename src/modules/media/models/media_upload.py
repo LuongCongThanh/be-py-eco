@@ -4,6 +4,10 @@ presigned credential into a randomly-keyed `quarantine/` prefix; a worker
 Only a `ready` asset is ever attachable to a Product or served via CDN —
 the object key never derives from client input (declared filename,
 content type) so nothing about the storage path is attacker-controlled.
+
+The three `*_key` fields (commit 10) point at the public, non-quarantine
+derivatives generated once an upload passes validation and the malware
+scan; they stay blank until `status` is `ready`.
 """
 
 from __future__ import annotations
@@ -29,6 +33,9 @@ class MediaUpload(BaseModel):
     declared_content_type = models.CharField(max_length=100)
     declared_size_bytes = models.PositiveBigIntegerField()
     rejection_reason = models.CharField(max_length=255, blank=True, default="")
+    webp_key = models.CharField(max_length=255, blank=True, default="")
+    avif_key = models.CharField(max_length=255, blank=True, default="")
+    thumbnail_key = models.CharField(max_length=255, blank=True, default="")
 
     class Meta:
         db_table = "media_upload"
