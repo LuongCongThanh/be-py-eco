@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from drf_spectacular.utils import extend_schema
@@ -27,19 +28,32 @@ from modules.localization.services.resolve_storefront_context import (
     resolve_storefront_context,
 )
 from modules.pricing.selectors.price_converter import PriceConverter, get_price_converter
-from modules.translation.selectors.get_localized_field import get_localized_field
+from modules.translation.selectors.get_localized_field import (
+    LocalizedField,
+    get_localized_field,
+)
+from modules.translation.selectors.localized_fields_for_entities import (
+    localized_fields_for_entities,
+)
 
 
-def _serialize_product(
-    product: Product, locale: str, converter: PriceConverter
-) -> tuple[dict, str]:
-    """Takes an already-built `converter` rather than a currency string so
-    the list path resolves the Exchange Rate once, not once per Product."""
-    name = get_localized_field(product, field="name", locale=locale, default_locale=DEFAULT_LOCALE)
-    first_variant = product.variants.filter(is_archived=False).order_by("created_at").first()
+def _first_sellable_variant(product: Product) -> Any:
+    """Reads from `product.variants.all()` rather than filtering in the
+    database, so a caller that prefetched the variants pays no query here.
+    Filtering with `.filter()` would discard the prefetch and re-query per
+    Product -- the exact N+1 this exists to avoid."""
+    sellable = [variant for variant in product.variants.all() if not variant.is_archived]
+    sellable.sort(key=lambda variant: variant.created_at)
+    return sellable[0] if sellable else None
+
+
+def _shape_product(product: Product, name: LocalizedField, converter: PriceConverter) -> dict:
+    """Pure over already-resolved inputs: no queries, so it is safe to call
+    in a loop."""
+    first_variant = _first_sellable_variant(product)
     base_price_vnd = first_variant.base_price_vnd if first_variant else None
     price = converter.convert(base_price_vnd)
-    data = {
+    return {
         "id": product.id,
         "name": name.value,
         "is_name_fallback": name.is_fallback,
@@ -50,7 +64,6 @@ def _serialize_product(
             "is_stale": price.is_stale,
         },
     }
-    return data, (name.locale or locale)
 
 
 class ProductListView(APIView):
@@ -80,7 +93,11 @@ class ProductListView(APIView):
         # created inside the same millisecond therefore order by the UUID's
         # random bits rather than by creation instant; stable across pages,
         # which is what a cursor requires.
-        products = Product.objects.filter(status=ProductStatus.ACTIVE).order_by("id")
+        products = (
+            Product.objects.filter(status=ProductStatus.ACTIVE)
+            .order_by("id")
+            .prefetch_related("variants")
+        )
         # The listing has no filters yet, so the fingerprint is constant.
         # It is computed anyway so that adding one cannot silently leave
         # old cursors valid against a different result set.
@@ -95,7 +112,12 @@ class ProductListView(APIView):
         has_more = len(rows) > page_size
         rows = rows[:page_size]
 
-        data = [_serialize_product(product, context.locale, converter)[0] for product in rows]
+        # Both lookups are now per-page rather than per-Product: one
+        # prefetch for the variants, one batched query for the names.
+        names = localized_fields_for_entities(
+            rows, field="name", locale=context.locale, default_locale=DEFAULT_LOCALE
+        )
+        data = [_shape_product(product, names[product.pk], converter) for product in rows]
         response = Response(
             success_envelope(
                 data,
@@ -138,7 +160,11 @@ class ProductDetailView(APIView):
 
         context = resolve_storefront_context(request)
         converter = get_price_converter(target_currency=context.currency)
-        data, response_locale = _serialize_product(product, context.locale, converter)
+        name = get_localized_field(
+            product, field="name", locale=context.locale, default_locale=DEFAULT_LOCALE
+        )
+        data = _shape_product(product, name, converter)
         response = Response(success_envelope(data, request=request))
-        response["Content-Language"] = response_locale
+        # A single Product has one real content locale, fallback included.
+        response["Content-Language"] = name.locale or context.locale
         return response

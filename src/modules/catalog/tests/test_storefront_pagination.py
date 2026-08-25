@@ -168,3 +168,36 @@ def test_the_rate_is_still_read_once_across_a_paginated_page(api_client: APIClie
 
     rate_queries = [q for q in captured.captured_queries if "pricing_exchange_rate" in q["sql"]]
     assert len(rate_queries) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("count", [1, 5, 20])
+def test_the_listing_costs_a_flat_number_of_queries(
+    api_client: APIClient, django_assert_num_queries, count: int
+) -> None:
+    """The assertion that could not be written until the per-Product lookups
+    were batched: the total does not grow with the page at all.
+
+    Four queries, whatever the page holds -- the Supported Country, the
+    Products, one prefetch for their Variants, one batched lookup for their
+    names. Earlier this was three per Product.
+    """
+    _publish_products(count)
+
+    with django_assert_num_queries(4):
+        api_client.get(URL, {"page_size": "20"})
+
+
+@pytest.mark.django_db
+def test_a_converted_listing_adds_exactly_one_query(
+    api_client: APIClient, django_assert_num_queries
+) -> None:
+    """Asking for a non-base currency costs one Exchange Rate read for the
+    whole page, not one per Product."""
+    from modules.pricing.services.sync_exchange_rates import sync_exchange_rates
+
+    sync_exchange_rates()
+    _publish_products(20)
+
+    with django_assert_num_queries(5):
+        api_client.get(URL, {"page_size": "20", "currency": "USD"})
