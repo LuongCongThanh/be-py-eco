@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
 from common.api.idempotency import remember_response, replay_if_cached, require_idempotency_key
+from common.api.schema import enveloped
 from common.api.throttling import AuthAccountRateThrottle, AuthIPRateThrottle, AuthUserRateThrottle
 from common.auth.permissions import check_policy
 from modules.accounts.api.admin.serializers import (
@@ -51,7 +52,7 @@ class StaffLoginView(APIView):
             "refresh tokens."
         ),
         request=StaffLoginSerializer,
-        responses=TokenResponseSerializer,
+        responses=enveloped(TokenResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = StaffLoginSerializer(data=request.data)
@@ -71,7 +72,7 @@ class CreateStaffView(APIView):
             "confirmed MFA and an `Idempotency-Key` header."
         ),
         request=CreateStaffSerializer,
-        responses={201: StaffResponseSerializer},
+        responses={201: enveloped(StaffResponseSerializer)},
     )
     def post(self, request: Request) -> Response:
         actor = cast(Staff, request.user)
@@ -114,7 +115,7 @@ class MfaSetupView(APIView):
             "Generates a new TOTP secret and provisioning URI for the authenticated staff member."
         ),
         request=None,
-        responses=MfaSetupResponseSerializer,
+        responses=enveloped(MfaSetupResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         _, provisioning_uri = start_mfa_setup(staff=cast(Staff, request.user))

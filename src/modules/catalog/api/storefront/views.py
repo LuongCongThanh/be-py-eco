@@ -15,6 +15,7 @@ from common.api.pagination import (
     pagination_meta,
     query_fingerprint,
 )
+from common.api.schema import enveloped
 from modules.catalog.api.storefront.serializers import (
     ProductListQuerySerializer,
     ProductStorefrontSerializer,
@@ -60,9 +61,10 @@ class ProductListView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        operation_id="storefront_catalog_products_list",
         summary="List published Products",
         parameters=[ProductListQuerySerializer],
-        responses=ProductStorefrontSerializer(many=True),
+        responses=enveloped(ProductStorefrontSerializer, many=True, paginated=True),
     )
     def get(self, request: Request) -> Response:
         params = ProductListQuerySerializer(data=request.query_params)
@@ -124,8 +126,9 @@ class ProductDetailView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        operation_id="storefront_catalog_products_retrieve",
         summary="Get a published Product",
-        responses=ProductStorefrontSerializer,
+        responses=enveloped(ProductStorefrontSerializer),
     )
     def get(self, request: Request, product_id: UUID) -> Response:
         try:

@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
+from common.api.schema import enveloped
 from modules.accounts.api.permissions import IsStaff
 from modules.pricing.api.admin.serializers import ExchangeRateSerializer
 from modules.pricing.constants import BASE_CURRENCY, SUPPORTED_TARGET_CURRENCIES
@@ -23,8 +24,9 @@ class ExchangeRateListView(APIView):
     permission_classes = [IsAuthenticated, IsStaff]
 
     @extend_schema(
+        operation_id="admin_pricing_exchange_rates_list",
         summary="List current Exchange Rates",
-        responses=ExchangeRateSerializer(many=True),
+        responses=enveloped(ExchangeRateSerializer, many=True),
     )
     def get(self, request: Request) -> Response:
         data = []

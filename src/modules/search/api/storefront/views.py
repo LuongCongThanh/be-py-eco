@@ -15,6 +15,7 @@ from common.api.pagination import (
     pagination_meta,
     query_fingerprint,
 )
+from common.api.schema import enveloped
 from modules.localization.services.resolve_storefront_context import resolve_storefront_context
 from modules.pricing.selectors.price_converter import PriceConverter, get_price_converter
 from modules.search.api.storefront.serializers import (
@@ -77,9 +78,10 @@ class ProductSearchView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        operation_id="storefront_search_products_search",
         summary="Search published Products",
         parameters=[SearchQuerySerializer],
-        responses=SearchResultSerializer(many=True),
+        responses=enveloped(SearchResultSerializer, many=True, paginated=True),
     )
     def get(self, request: Request) -> Response:
         params = _validated_params(SearchQuerySerializer, request)
@@ -133,9 +135,10 @@ class ProductAutocompleteView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        operation_id="storefront_search_products_autocomplete",
         summary="Autocomplete Product names",
         parameters=[AutocompleteQuerySerializer],
-        responses=ProductDocumentSerializer(many=True),
+        responses=enveloped(ProductDocumentSerializer, many=True),
     )
     def get(self, request: Request) -> Response:
         params = _validated_params(AutocompleteQuerySerializer, request)
