@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from common.api.envelope import success_envelope
 from modules.catalog.constants import DEFAULT_LOCALE
 from modules.pricing.constants import BASE_CURRENCY
-from modules.pricing.selectors.get_converted_price import get_converted_price
+from modules.pricing.selectors.price_converter import PriceConverter, get_price_converter
 from modules.search.selectors.search_query import build_autocomplete_query, build_search_query
 from modules.search.services.execute_search import execute_search
 
@@ -26,17 +26,18 @@ def _resolve_locale(request: Request) -> str:
     return DEFAULT_LOCALE
 
 
-def _with_converted_price(hits: list[dict], currency: str) -> list[dict]:
+def _with_converted_price(hits: list[dict], converter: PriceConverter) -> list[dict]:
     """Re-derives each hit's price from the still-VND `base_price_vnd`
     field rather than trusting anything already baked into the index — an
     already-converted price would go stale the moment the rate changes
-    without a reindex."""
+    without a reindex.
+
+    The `converter` arrives already bound to a rate, so this loop costs no
+    database queries at all, however many hits come back."""
     documents = []
     for hit in hits:
         document = dict(hit)
-        price = get_converted_price(
-            base_price_vnd=document.get("base_price_vnd"), target_currency=currency
-        )
+        price = converter.convert(document.get("base_price_vnd"))
         document["price"] = {
             "amount": price.amount,
             "currency": price.currency,
@@ -57,6 +58,7 @@ class ProductSearchView(APIView):
     def get(self, request: Request) -> Response:
         locale = _resolve_locale(request)
         currency = request.query_params.get("currency", BASE_CURRENCY)
+        converter = get_price_converter(target_currency=currency)
         params = request.query_params
         attribute_value_ids = params.getlist("attribute_value_id") or None
         body = build_search_query(
@@ -71,7 +73,7 @@ class ProductSearchView(APIView):
         )
 
         hits = execute_search(locale=locale, body=body)
-        return Response(success_envelope(_with_converted_price(hits, currency), request=request))
+        return Response(success_envelope(_with_converted_price(hits, converter), request=request))
 
 
 class ProductAutocompleteView(APIView):

@@ -1,46 +1,23 @@
-"""Convert a VND Base Price into a Customer's selected Transaction
-Currency for display — guild.md §15 Slice 3, commits 10-12. Reads the
-latest synced `ExchangeRate` row (`get_latest_rate`) and never calls the
-provider adapter itself — a catalog/search read can call this as often
-as it likes without ever blocking on or invoking the exchange-rate
-provider (commit 12's regression test asserts exactly this).
+"""Convert a single VND Base Price into a Customer's selected Transaction
+Currency for display — guild.md §15 Slice 3, commits 10-12.
 
-`is_stale` surfaces commit 11's non-blocking signal: a stale/missing
-required rate degrades the price display (amount `None`, `is_stale`
-`True`) rather than silently serving an outdated conversion. Hard-
-blocking checkout on staleness is Slice 5's concern, not this one's.
+A one-call convenience over `price_converter`, for the genuine
+single-Product read. Anything rendering more than one price should build
+a `PriceConverter` once and loop over `convert` instead — calling this in
+a loop re-reads the Exchange Rate on every iteration.
+
+Like the converter it delegates to, this never calls the provider
+adapter: a catalog or search read can run as often as it likes without
+ever blocking on the exchange-rate provider (guild.md §3.7, enforced by
+`tests/test_no_inline_provider_call.py`).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from modules.pricing.selectors.price_converter import ConvertedPrice, get_price_converter
 
-from modules.pricing.constants import BASE_CURRENCY
-from modules.pricing.selectors.get_latest_rate import get_latest_rate
-from modules.pricing.services.convert_price import convert_price
-
-
-@dataclass(frozen=True)
-class ConvertedPrice:
-    amount: int | None
-    currency: str
-    is_stale: bool
+__all__ = ["ConvertedPrice", "get_converted_price"]
 
 
 def get_converted_price(*, base_price_vnd: int | None, target_currency: str) -> ConvertedPrice:
-    if base_price_vnd is None:
-        return ConvertedPrice(amount=None, currency=target_currency, is_stale=False)
-
-    if target_currency == BASE_CURRENCY:
-        return ConvertedPrice(amount=base_price_vnd, currency=target_currency, is_stale=False)
-
-    rate_row = get_latest_rate(base_currency=BASE_CURRENCY, target_currency=target_currency)
-    if rate_row is None:
-        # No rate has ever been synced for this pair — degrade exactly
-        # like a stale one, since there's nothing trustworthy to show.
-        return ConvertedPrice(amount=None, currency=target_currency, is_stale=True)
-
-    amount = convert_price(
-        base_price_vnd=base_price_vnd, rate=rate_row.rate, target_currency=target_currency
-    )
-    return ConvertedPrice(amount=amount, currency=target_currency, is_stale=rate_row.is_stale)
+    return get_price_converter(target_currency=target_currency).convert(base_price_vnd)

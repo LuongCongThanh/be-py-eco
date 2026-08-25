@@ -14,7 +14,7 @@ from modules.catalog.constants import DEFAULT_LOCALE
 from modules.catalog.errors import ProductNotFoundError
 from modules.catalog.models.product import Product, ProductStatus
 from modules.pricing.constants import BASE_CURRENCY
-from modules.pricing.selectors.get_converted_price import get_converted_price
+from modules.pricing.selectors.price_converter import PriceConverter, get_price_converter
 from modules.translation.selectors.get_localized_field import get_localized_field
 
 _ALLOWED_LOCALES = ("vi", "en")
@@ -32,11 +32,15 @@ def _resolve_locale(request: Request) -> str:
     return DEFAULT_LOCALE
 
 
-def _serialize_product(product: Product, locale: str, currency: str) -> tuple[dict, str]:
+def _serialize_product(
+    product: Product, locale: str, converter: PriceConverter
+) -> tuple[dict, str]:
+    """Takes an already-built `converter` rather than a currency string so
+    the list path resolves the Exchange Rate once, not once per Product."""
     name = get_localized_field(product, field="name", locale=locale, default_locale=DEFAULT_LOCALE)
     first_variant = product.variants.filter(is_archived=False).order_by("created_at").first()
     base_price_vnd = first_variant.base_price_vnd if first_variant else None
-    price = get_converted_price(base_price_vnd=base_price_vnd, target_currency=currency)
+    price = converter.convert(base_price_vnd)
     data = {
         "id": product.id,
         "name": name.value,
@@ -65,11 +69,12 @@ class ProductListView(APIView):
     def get(self, request: Request) -> Response:
         locale = _resolve_locale(request)
         currency = request.query_params.get("currency", BASE_CURRENCY)
+        converter = get_price_converter(target_currency=currency)
         products = Product.objects.filter(status=ProductStatus.ACTIVE).order_by("created_at")
         data = []
         response_locale = locale
         for product in products:
-            item, response_locale = _serialize_product(product, locale, currency)
+            item, response_locale = _serialize_product(product, locale, converter)
             data.append(item)
         response = Response(success_envelope(data, request=request))
         response["Content-Language"] = response_locale
@@ -95,7 +100,8 @@ class ProductDetailView(APIView):
 
         locale = _resolve_locale(request)
         currency = request.query_params.get("currency", BASE_CURRENCY)
-        data, response_locale = _serialize_product(product, locale, currency)
+        converter = get_price_converter(target_currency=currency)
+        data, response_locale = _serialize_product(product, locale, converter)
         response = Response(success_envelope(data, request=request))
         response["Content-Language"] = response_locale
         return response

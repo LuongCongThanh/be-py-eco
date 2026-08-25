@@ -19,7 +19,11 @@ def test_vnd_target_passes_through_unconverted_and_never_stale() -> None:
     assert result.is_stale is False
 
 
+@pytest.mark.django_db
 def test_none_base_price_yields_none_amount() -> None:
+    """Needs the database now: the currency is validated (and its rate
+    resolved) before the price is looked at, so an unsupported currency
+    is rejected even when there is no price to convert."""
     result = get_converted_price(base_price_vnd=None, target_currency="USD")
 
     assert result.amount is None
