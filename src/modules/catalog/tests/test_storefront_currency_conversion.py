@@ -15,6 +15,15 @@ from modules.pricing.services.sync_exchange_rates import sync_exchange_rates
 from modules.translation.services.set_translation import set_translation
 
 
+@pytest.fixture(autouse=True)
+def _storefront_country(supported_country):
+    """Every test in this module is a Storefront read, and a Storefront read
+    resolves locale and Transaction Currency against the active Supported
+    Country. Declared once here rather than on each signature, but still
+    explicit: this module states the dependency, it is not granted globally.
+    """
+
+
 @pytest.fixture
 def api_client() -> APIClient:
     return APIClient()

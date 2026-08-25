@@ -137,7 +137,9 @@ def test_autocomplete_without_a_prefix_is_a_400(api_client: APIClient) -> None:
 
 
 @pytest.mark.django_db
-def test_valid_input_reaches_the_cluster_with_coerced_values(api_client: APIClient) -> None:
+def test_valid_input_reaches_the_cluster_with_coerced_values(
+    api_client: APIClient, supported_country
+) -> None:
     value_id = uuid4()
 
     with patch(EXECUTE_SEARCH, return_value=[]) as execute:
@@ -159,14 +161,17 @@ def test_valid_input_reaches_the_cluster_with_coerced_values(api_client: APIClie
 
 
 @pytest.mark.django_db
-def test_unsupported_currency_is_still_pricings_call_not_the_serializers(
+def test_unsupported_currency_is_refused_outside_the_serializer(
     api_client: APIClient,
+    supported_country,
 ) -> None:
-    """The serializer describes `currency` but does not police it — ADR-0008
-    keeps that authority in `pricing`."""
+    """The serializer describes `currency` but does not police it. Which
+    currencies exist is decided further in: `localization` checks the
+    Supported Country allows it, then `pricing` checks it can be converted
+    (ADR-0008). EUR fails the first of those."""
     with patch(EXECUTE_SEARCH) as execute:
         response = api_client.get(SEARCH_URL, {"currency": "EUR"})
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert response.json()["code"] == "pricing.unsupported_currency"
+    assert response.json()["code"] == "localization.unsupported_currency"
     execute.assert_not_called()

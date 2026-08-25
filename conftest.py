@@ -18,3 +18,18 @@ def _clear_cache():
     """
     cache.clear()
     yield
+
+
+@pytest.fixture
+def supported_country():
+    """The active Supported Country a Storefront read resolves locale and
+    Transaction Currency against.
+
+    Deliberately explicit rather than autouse: a Storefront endpoint really
+    does require this row, and a test should say so. A test that forgets it
+    fails with `localization.supported_country_not_configured` (503), which
+    names the missing thing precisely.
+    """
+    from modules.localization.tests.factories import SupportedCountryFactory
+
+    return SupportedCountryFactory()

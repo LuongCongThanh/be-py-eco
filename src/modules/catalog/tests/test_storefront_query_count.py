@@ -22,6 +22,15 @@ from modules.translation.services.set_translation import set_translation
 RATE_TABLE = "pricing_exchange_rate"
 
 
+@pytest.fixture(autouse=True)
+def _storefront_country(supported_country):
+    """Every test in this module is a Storefront read, and a Storefront read
+    resolves locale and Transaction Currency against the active Supported
+    Country. Declared once here rather than on each signature, but still
+    explicit: this module states the dependency, it is not granted globally.
+    """
+
+
 @pytest.fixture
 def api_client() -> APIClient:
     return APIClient()
@@ -92,10 +101,16 @@ def test_vnd_listing_reads_no_rate_at_all(api_client: APIClient) -> None:
 @pytest.mark.django_db
 def test_unsupported_currency_is_a_400_not_a_null_price(api_client: APIClient) -> None:
     """Previously this returned 200 with `amount: null`, indistinguishable
-    from a supported currency whose rate had not synced yet."""
+    from a supported currency whose rate had not synced yet.
+
+    The refusal now comes from `localization`, not `pricing`: the Supported
+    Country does not allow EUR, which is a more specific truth than "EUR has
+    no configured minor unit". `pricing`'s check survives as the guard for a
+    currency a country allows but pricing cannot convert -- a misconfiguration
+    rather than a client error."""
     _publish_products(1)
 
     response = api_client.get("/api/v1/storefront/catalog/products", {"currency": "EUR"})
 
     assert response.status_code == 400
-    assert response.json()["code"] == "pricing.unsupported_currency"
+    assert response.json()["code"] == "localization.unsupported_currency"

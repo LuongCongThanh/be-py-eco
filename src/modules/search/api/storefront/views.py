@@ -9,8 +9,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
-from modules.catalog.constants import DEFAULT_LOCALE
-from modules.pricing.constants import BASE_CURRENCY
+from modules.localization.services.resolve_storefront_context import (
+    resolve_storefront_context,
+)
 from modules.pricing.selectors.price_converter import PriceConverter, get_price_converter
 from modules.search.api.storefront.serializers import (
     AutocompleteQuerySerializer,
@@ -20,19 +21,6 @@ from modules.search.api.storefront.serializers import (
 )
 from modules.search.selectors.search_query import build_autocomplete_query, build_search_query
 from modules.search.services.execute_search import execute_search
-
-_ALLOWED_LOCALES = ("vi", "en")
-
-
-def _resolve_locale(request: Request) -> str:
-    """Same parsing approach as `localization.services.suggest_locale`
-    and `catalog.api.storefront.views`."""
-    accept_language = request.META.get("HTTP_ACCEPT_LANGUAGE", "")
-    for part in accept_language.split(","):
-        lang = part.split(";")[0].strip().split("-")[0].lower()
-        if lang in _ALLOWED_LOCALES:
-            return lang
-    return DEFAULT_LOCALE
 
 
 def _validated_params(serializer_class: type, request: Request) -> dict[str, Any]:
@@ -77,8 +65,8 @@ class ProductSearchView(APIView):
     )
     def get(self, request: Request) -> Response:
         params = _validated_params(SearchQuerySerializer, request)
-        locale = _resolve_locale(request)
-        converter = get_price_converter(target_currency=params.get("currency", BASE_CURRENCY))
+        context = resolve_storefront_context(request)
+        converter = get_price_converter(target_currency=context.currency)
 
         # UUIDs are stringified at this boundary: `build_search_query`
         # builds a JSON body, and a UUID in it would have to be coerced
@@ -95,7 +83,7 @@ class ProductSearchView(APIView):
             sort=params["sort"],
         )
 
-        hits = execute_search(locale=locale, body=body)
+        hits = execute_search(locale=context.locale, body=body)
         return Response(success_envelope(_with_converted_price(hits, converter), request=request))
 
 
@@ -112,8 +100,8 @@ class ProductAutocompleteView(APIView):
     )
     def get(self, request: Request) -> Response:
         params = _validated_params(AutocompleteQuerySerializer, request)
-        locale = _resolve_locale(request)
+        context = resolve_storefront_context(request)
         body = build_autocomplete_query(params["q"])
 
-        hits = execute_search(locale=locale, body=body)
+        hits = execute_search(locale=context.locale, body=body)
         return Response(success_envelope(hits, request=request))

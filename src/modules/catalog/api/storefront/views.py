@@ -13,23 +13,11 @@ from modules.catalog.api.storefront.serializers import ProductStorefrontSerializ
 from modules.catalog.constants import DEFAULT_LOCALE
 from modules.catalog.errors import ProductNotFoundError
 from modules.catalog.models.product import Product, ProductStatus
-from modules.pricing.constants import BASE_CURRENCY
+from modules.localization.services.resolve_storefront_context import (
+    resolve_storefront_context,
+)
 from modules.pricing.selectors.price_converter import PriceConverter, get_price_converter
 from modules.translation.selectors.get_localized_field import get_localized_field
-
-_ALLOWED_LOCALES = ("vi", "en")
-
-
-def _resolve_locale(request: Request) -> str:
-    """Best `Accept-Language` match against `_ALLOWED_LOCALES`, falling
-    back to `DEFAULT_LOCALE` — same parsing approach as
-    `localization.services.suggest_locale`."""
-    accept_language = request.META.get("HTTP_ACCEPT_LANGUAGE", "")
-    for part in accept_language.split(","):
-        lang = part.split(";")[0].strip().split("-")[0].lower()
-        if lang in _ALLOWED_LOCALES:
-            return lang
-    return DEFAULT_LOCALE
 
 
 def _serialize_product(
@@ -67,17 +55,15 @@ class ProductListView(APIView):
         responses=ProductStorefrontSerializer(many=True),
     )
     def get(self, request: Request) -> Response:
-        locale = _resolve_locale(request)
-        currency = request.query_params.get("currency", BASE_CURRENCY)
-        converter = get_price_converter(target_currency=currency)
+        context = resolve_storefront_context(request)
+        converter = get_price_converter(target_currency=context.currency)
         products = Product.objects.filter(status=ProductStatus.ACTIVE).order_by("created_at")
-        data = []
-        response_locale = locale
-        for product in products:
-            item, response_locale = _serialize_product(product, locale, converter)
-            data.append(item)
+        data = [_serialize_product(product, context.locale, converter)[0] for product in products]
         response = Response(success_envelope(data, request=request))
-        response["Content-Language"] = response_locale
+        # A list can mix locales, so no per-Product answer is right. The
+        # locale that was *asked for* is the only honest thing to report --
+        # previously this reflected whichever Product happened to be last.
+        response["Content-Language"] = context.locale
         return response
 
 
@@ -98,10 +84,9 @@ class ProductDetailView(APIView):
         except Product.DoesNotExist as exc:
             raise ProductNotFoundError() from exc
 
-        locale = _resolve_locale(request)
-        currency = request.query_params.get("currency", BASE_CURRENCY)
-        converter = get_price_converter(target_currency=currency)
-        data, response_locale = _serialize_product(product, locale, converter)
+        context = resolve_storefront_context(request)
+        converter = get_price_converter(target_currency=context.currency)
+        data, response_locale = _serialize_product(product, context.locale, converter)
         response = Response(success_envelope(data, request=request))
         response["Content-Language"] = response_locale
         return response
