@@ -18,10 +18,11 @@ from __future__ import annotations
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 
+from common.api.pagination import CursorPageSerializer
 from modules.search.selectors.search_query import SORT_CLAUSES
 
 
-class SearchQuerySerializer(serializers.Serializer):
+class SearchQuerySerializer(CursorPageSerializer):
     """Validated query params for Product search.
 
     `currency` is described here but deliberately not constrained: which
@@ -55,7 +56,13 @@ class SearchQuerySerializer(serializers.Serializer):
 class AutocompleteQuerySerializer(serializers.Serializer):
     """`q` is required: a prefix-match with no prefix is not a question
     worth answering, and returning every Product to a suggestion box is
-    worse than refusing."""
+    worse than refusing.
+
+    Deliberately not paginated. Suggestions are inherently top-N -- nobody
+    pages through an autocomplete dropdown -- and the size is fixed by the
+    server rather than accepted from the client, which is what stops this
+    endpoint being used as an unmetered search.
+    """
 
     q = serializers.CharField(help_text="Prefix to match against Product names.")
 

@@ -9,7 +9,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
-from modules.catalog.api.storefront.serializers import ProductStorefrontSerializer
+from common.api.pagination import (
+    decode_cursor,
+    encode_cursor,
+    pagination_meta,
+    query_fingerprint,
+)
+from modules.catalog.api.storefront.serializers import (
+    ProductListQuerySerializer,
+    ProductStorefrontSerializer,
+)
 from modules.catalog.constants import DEFAULT_LOCALE
 from modules.catalog.errors import ProductNotFoundError
 from modules.catalog.models.product import Product, ProductStatus
@@ -52,14 +61,54 @@ class ProductListView(APIView):
 
     @extend_schema(
         summary="List published Products",
+        parameters=[ProductListQuerySerializer],
         responses=ProductStorefrontSerializer(many=True),
     )
     def get(self, request: Request) -> Response:
+        params = ProductListQuerySerializer(data=request.query_params)
+        params.is_valid(raise_exception=True)
+        page_size = params.validated_data["page_size"]
+
         context = resolve_storefront_context(request)
         converter = get_price_converter(target_currency=context.currency)
-        products = Product.objects.filter(status=ProductStatus.ACTIVE).order_by("created_at")
-        data = [_serialize_product(product, context.locale, converter)[0] for product in products]
-        response = Response(success_envelope(data, request=request))
+
+        # Keyset on the primary key: it is a UUIDv7, so it is unique *and*
+        # time-ordered, which makes it a total order needing no extra index
+        # -- ordering by created_at would need a composite one. Products
+        # created inside the same millisecond therefore order by the UUID's
+        # random bits rather than by creation instant; stable across pages,
+        # which is what a cursor requires.
+        products = Product.objects.filter(status=ProductStatus.ACTIVE).order_by("id")
+        # The listing has no filters yet, so the fingerprint is constant.
+        # It is computed anyway so that adding one cannot silently leave
+        # old cursors valid against a different result set.
+        fingerprint = query_fingerprint({})
+        if "cursor" in params.validated_data:
+            after = decode_cursor(params.validated_data["cursor"], fingerprint=fingerprint)
+            products = products.filter(id__gt=after)
+
+        # One more than asked for: the extra row is how we know whether a
+        # further page exists, without a second count query.
+        rows = list(products[: page_size + 1])
+        has_more = len(rows) > page_size
+        rows = rows[:page_size]
+
+        data = [_serialize_product(product, context.locale, converter)[0] for product in rows]
+        response = Response(
+            success_envelope(
+                data,
+                request=request,
+                pagination=pagination_meta(
+                    next_cursor=(
+                        encode_cursor(str(rows[-1].id), fingerprint=fingerprint)
+                        if has_more
+                        else None
+                    ),
+                    has_more=has_more,
+                    page_size=page_size,
+                ),
+            )
+        )
         # A list can mix locales, so no per-Product answer is right. The
         # locale that was *asked for* is the only honest thing to report --
         # previously this reflected whichever Product happened to be last.

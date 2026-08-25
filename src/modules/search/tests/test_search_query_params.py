@@ -19,6 +19,7 @@ from modules.search.api.storefront.serializers import (
     AutocompleteQuerySerializer,
     SearchQuerySerializer,
 )
+from modules.search.services.execute_search import SearchHits
 
 SEARCH_URL = "/api/v1/storefront/search/products/search"
 AUTOCOMPLETE_URL = "/api/v1/storefront/search/products/autocomplete"
@@ -142,7 +143,7 @@ def test_valid_input_reaches_the_cluster_with_coerced_values(
 ) -> None:
     value_id = uuid4()
 
-    with patch(EXECUTE_SEARCH, return_value=[]) as execute:
+    with patch(EXECUTE_SEARCH, return_value=SearchHits(documents=[], sorts=[])) as execute:
         response = api_client.get(
             SEARCH_URL,
             {
@@ -155,7 +156,7 @@ def test_valid_input_reaches_the_cluster_with_coerced_values(
 
     assert response.status_code == status.HTTP_200_OK
     body = execute.call_args.kwargs["body"]
-    assert body["sort"] == [{"rating": "desc"}]
+    assert body["sort"] == [{"rating": "desc"}, {"product_id": "asc"}]
     assert {"term": {"is_available": True}} in body["query"]["bool"]["filter"]
     assert {"term": {"attribute_value_ids": str(value_id)}} in body["query"]["bool"]["filter"]
 

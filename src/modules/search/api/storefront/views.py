@@ -9,9 +9,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
-from modules.localization.services.resolve_storefront_context import (
-    resolve_storefront_context,
+from common.api.pagination import (
+    decode_cursor,
+    encode_cursor,
+    pagination_meta,
+    query_fingerprint,
 )
+from modules.localization.services.resolve_storefront_context import resolve_storefront_context
 from modules.pricing.selectors.price_converter import PriceConverter, get_price_converter
 from modules.search.api.storefront.serializers import (
     AutocompleteQuerySerializer,
@@ -21,6 +25,20 @@ from modules.search.api.storefront.serializers import (
 )
 from modules.search.selectors.search_query import build_autocomplete_query, build_search_query
 from modules.search.services.execute_search import execute_search
+
+# Everything that decides *which* Products match. `page_size`, `cursor` and
+# `currency` are excluded on purpose: they change presentation, not the
+# result set, so a cursor must survive a change to them.
+_FILTER_PARAMS = (
+    "q",
+    "category_id",
+    "brand_id",
+    "attribute_value_id",
+    "price_min",
+    "price_max",
+    "available_only",
+    "sort",
+)
 
 
 def _validated_params(serializer_class: type, request: Request) -> dict[str, Any]:
@@ -68,9 +86,12 @@ class ProductSearchView(APIView):
         context = resolve_storefront_context(request)
         converter = get_price_converter(target_currency=context.currency)
 
-        # UUIDs are stringified at this boundary: `build_search_query`
-        # builds a JSON body, and a UUID in it would have to be coerced
-        # eventually anyway — later, and further from where it arrived.
+        page_size = params["page_size"]
+        fingerprint = query_fingerprint({key: params.get(key) for key in _FILTER_PARAMS})
+        search_after = (
+            decode_cursor(params["cursor"], fingerprint=fingerprint) if "cursor" in params else None
+        )
+
         body = build_search_query(
             text=params.get("q"),
             category_id=str(params["category_id"]) if "category_id" in params else None,
@@ -81,10 +102,28 @@ class ProductSearchView(APIView):
             price_max=params.get("price_max"),
             available_only=params["available_only"],
             sort=params["sort"],
+            # One more than asked for: the extra hit is how we know whether
+            # a further page exists, without a second count query.
+            size=page_size + 1,
+            search_after=search_after,
         )
 
         hits = execute_search(locale=context.locale, body=body)
-        return Response(success_envelope(_with_converted_price(hits, converter), request=request))
+        has_more = len(hits.documents) > page_size
+        documents = hits.documents[:page_size]
+        next_cursor = (
+            encode_cursor(hits.sorts[page_size - 1], fingerprint=fingerprint) if has_more else None
+        )
+
+        return Response(
+            success_envelope(
+                _with_converted_price(documents, converter),
+                request=request,
+                pagination=pagination_meta(
+                    next_cursor=next_cursor, has_more=has_more, page_size=page_size
+                ),
+            )
+        )
 
 
 class ProductAutocompleteView(APIView):
@@ -104,4 +143,4 @@ class ProductAutocompleteView(APIView):
         body = build_autocomplete_query(params["q"])
 
         hits = execute_search(locale=context.locale, body=body)
-        return Response(success_envelope(hits, request=request))
+        return Response(success_envelope(hits.documents, request=request))

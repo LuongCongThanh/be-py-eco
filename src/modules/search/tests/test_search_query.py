@@ -2,7 +2,12 @@
 commits 3-5's query-shape contract. Pure functions, no live cluster
 needed; test_search_behavior.py covers actual OpenSearch execution."""
 
-from modules.search.selectors.search_query import build_autocomplete_query, build_search_query
+from modules.search.selectors.search_query import (
+    AUTOCOMPLETE_SIZE,
+    SORT_CLAUSES,
+    build_autocomplete_query,
+    build_search_query,
+)
 
 
 def test_text_query_uses_fuzziness_for_typo_tolerance() -> None:
@@ -38,7 +43,6 @@ def test_no_text_produces_match_all_without_filters() -> None:
     body = build_search_query()
 
     assert body["query"] == {"match_all": {}}
-    assert "sort" not in body
 
 
 def test_category_and_brand_facets_become_filter_clauses() -> None:
@@ -71,16 +75,39 @@ def test_availability_facet() -> None:
     assert {"term": {"is_available": True}} in filters
 
 
-def test_relevance_sort_omits_explicit_sort_clause() -> None:
+def test_relevance_sort_is_score_then_a_tiebreaker() -> None:
+    """Relevance used to leave `sort` off and let OpenSearch default to
+    _score. It is spelled out now because search_after has nothing to
+    resume from without an explicit sort, and _score alone is not a total
+    order — equal scores would break per-shard, skipping or repeating
+    Products exactly at a page boundary."""
     body = build_search_query(text="x", sort="relevance")
 
-    assert "sort" not in body
+    assert body["sort"] == [{"_score": "desc"}, {"product_id": "asc"}]
 
 
 def test_recency_sort_adds_explicit_sort_clause() -> None:
     body = build_search_query(sort="recency")
 
-    assert body["sort"] == [{"published_at": "desc"}]
+    assert body["sort"] == [{"published_at": "desc"}, {"product_id": "asc"}]
+
+
+def test_every_sort_ends_in_the_same_tiebreaker() -> None:
+    """The invariant cursors depend on: whichever sort a Customer picks,
+    the ordering is total, so a page boundary lands in exactly one place."""
+    for sort in SORT_CLAUSES:
+        assert build_search_query(sort=sort)["sort"][-1] == {"product_id": "asc"}
+
+
+def test_window_arguments_reach_the_body() -> None:
+    body = build_search_query(size=21, search_after=[1.0, "p20"])
+
+    assert body["size"] == 21
+    assert body["search_after"] == [1.0, "p20"]
+
+
+def test_autocomplete_is_capped_without_asking_the_caller() -> None:
+    assert build_autocomplete_query("Áo th")["size"] == AUTOCOMPLETE_SIZE
 
 
 def test_autocomplete_query_bypasses_synonym_analyzer() -> None:

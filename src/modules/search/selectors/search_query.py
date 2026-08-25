@@ -13,11 +13,20 @@ from __future__ import annotations
 
 from typing import Any
 
-SORT_CLAUSES: dict[str, list[dict[str, Any]] | None] = {
-    "relevance": None,  # OpenSearch's default _score sort
-    "popularity": [{"popularity": "desc"}],
-    "rating": [{"rating": "desc"}],
-    "recency": [{"published_at": "desc"}],
+# Every clause ends in `product_id` because `search_after` needs a total
+# ordering: popularity, rating and published_at all tie, and ties break
+# per-shard otherwise, so a cursor would skip or repeat Products exactly at
+# a page boundary. `relevance` spells out `_score` for the same reason --
+# leaving `sort` off entirely gives search_after nothing to resume from.
+# A welcome side effect: tie order is now deterministic rather than
+# whichever shard answered first.
+_TIEBREAKER: dict[str, Any] = {"product_id": "asc"}
+
+SORT_CLAUSES: dict[str, list[dict[str, Any]]] = {
+    "relevance": [{"_score": "desc"}, _TIEBREAKER],
+    "popularity": [{"popularity": "desc"}, _TIEBREAKER],
+    "rating": [{"rating": "desc"}, _TIEBREAKER],
+    "recency": [{"published_at": "desc"}, _TIEBREAKER],
 }
 
 # An exact SKU/barcode match should outrank any fuzzy text score — commit
@@ -25,6 +34,11 @@ SORT_CLAUSES: dict[str, list[dict[str, Any]] | None] = {
 # results that already match (exact or fuzzy) via minimum_should_match: 1
 # below, without needing a separate query path.
 _EXACT_MATCH_BOOST = 1000
+
+# Suggestions are top-N by nature -- nobody pages through an autocomplete
+# dropdown -- so this is fixed here rather than accepted from the client.
+# That is what stops the endpoint being used as an unmetered search.
+AUTOCOMPLETE_SIZE = 10
 
 
 def build_search_query(
@@ -37,6 +51,8 @@ def build_search_query(
     brand_id: str | None = None,
     available_only: bool = False,
     sort: str = "relevance",
+    size: int | None = None,
+    search_after: list[Any] | None = None,
 ) -> dict[str, Any]:
     should: list[dict[str, Any]] = []
     filters: list[dict[str, Any]] = []
@@ -86,20 +102,24 @@ def build_search_query(
     query: dict[str, Any] = {"bool": bool_query} if bool_query else {"match_all": {}}
 
     body: dict[str, Any] = {"query": query}
-    sort_clause = SORT_CLAUSES.get(sort)
-    if sort_clause:
-        body["sort"] = sort_clause
+    body["sort"] = SORT_CLAUSES.get(sort, SORT_CLAUSES["relevance"])
+    if size is not None:
+        body["size"] = size
+    if search_after is not None:
+        # Resume immediately after the last hit of the previous page.
+        body["search_after"] = search_after
     return body
 
 
-def build_autocomplete_query(prefix: str) -> dict[str, Any]:
+def build_autocomplete_query(prefix: str, *, size: int = AUTOCOMPLETE_SIZE) -> dict[str, Any]:
     """Prefix match against the edge_ngram-indexed `name` field, bypassing
     the synonym `search_analyzer` at query time (an unfinished prefix
     shouldn't be synonym-expanded) — commit 3's autocomplete."""
     return {
+        "size": size,
         "query": {
             "match": {
                 "name": {"query": prefix, "analyzer": "standard"},
             }
-        }
+        },
     }

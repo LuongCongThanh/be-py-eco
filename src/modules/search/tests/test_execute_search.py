@@ -23,7 +23,41 @@ def test_returns_the_sources_of_each_hit() -> None:
     ):
         hits = execute_search(locale="vi", body={"query": {"match_all": {}}})
 
-    assert hits == [{"product_id": "p1"}, {"product_id": "p2"}]
+    assert hits.documents == [{"product_id": "p1"}, {"product_id": "p2"}]
+
+
+def test_carries_each_hits_sort_values_for_the_next_page() -> None:
+    """Per-hit, not last-hit-only: a caller over-fetches by one to detect
+    has_more, and must resume from the last hit it kept, not the extra."""
+    fake_client = MagicMock()
+    fake_client.search.return_value = {
+        "hits": {
+            "hits": [
+                {"_source": {"product_id": "p1"}, "sort": [1.0, "p1"]},
+                {"_source": {"product_id": "p2"}, "sort": [0.5, "p2"]},
+            ]
+        }
+    }
+
+    with patch(
+        "modules.search.services.execute_search.get_opensearch_client", return_value=fake_client
+    ):
+        hits = execute_search(locale="vi", body={"query": {"match_all": {}}})
+
+    assert hits.sorts == [[1.0, "p1"], [0.5, "p2"]]
+
+
+def test_an_empty_result_has_no_next_position() -> None:
+    fake_client = MagicMock()
+    fake_client.search.return_value = {"hits": {"hits": []}}
+
+    with patch(
+        "modules.search.services.execute_search.get_opensearch_client", return_value=fake_client
+    ):
+        hits = execute_search(locale="vi", body={"query": {"match_all": {}}})
+
+    assert hits.documents == []
+    assert hits.sorts == []
 
 
 def test_cluster_failure_raises_search_unavailable_error() -> None:
