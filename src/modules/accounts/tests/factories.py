@@ -12,6 +12,11 @@ class CustomerFactory(factory.django.DjangoModelFactory):
         model = Customer
 
     email = factory.Sequence(lambda n: f"customer{n}@example.com")
+    # Declared with the model's own defaults so tests can override them --
+    # Storefront reads resolve against these (localization's
+    # resolve_storefront_context).
+    preferred_locale = ""
+    preferred_currency = ""
 
 
 class StaffFactory(factory.django.DjangoModelFactory):

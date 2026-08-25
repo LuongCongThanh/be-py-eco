@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
+from common.api.schema import enveloped
 from modules.accounts.api.permissions import IsStaff
 from modules.media.api.admin.serializers import RequestUploadSerializer, UploadCredentialSerializer
 from modules.media.services.request_upload import request_upload
@@ -23,7 +24,7 @@ class RequestUploadView(APIView):
     @extend_schema(
         summary="Request a presigned media upload credential",
         request=RequestUploadSerializer,
-        responses=UploadCredentialSerializer,
+        responses=enveloped(UploadCredentialSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = RequestUploadSerializer(data=request.data)

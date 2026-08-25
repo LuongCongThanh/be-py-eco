@@ -40,6 +40,20 @@ CELERY_RESULT_BACKEND = env("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_TIMEZONE = "UTC"  # matches TIME_ZONE below
 
+# guild.md §15 Slice 3 — periodic jobs. The outbox dispatcher (commit 2)
+# and the Exchange Rate sync (commit 8) are both polling/scheduled work,
+# not triggered inline by a request.
+CELERY_BEAT_SCHEDULE = {
+    "dispatch-outbox-events": {
+        "task": "common_db.dispatch_outbox_events",
+        "schedule": 5.0,  # seconds
+    },
+    "sync-exchange-rates": {
+        "task": "pricing.sync_exchange_rates",
+        "schedule": 3600.0,  # hourly
+    },
+}
+
 # MinIO (S3-compatible) via django-storages — the existing abstraction media
 # will consume in Slice 2, rather than a custom client wrapper.
 STORAGES = {
@@ -70,6 +84,8 @@ INSTALLED_APPS = [
     "modules.catalog",
     "modules.localization",
     "modules.media",
+    "modules.pricing",
+    "modules.search",
     "modules.translation",
 ]
 
@@ -137,6 +153,16 @@ GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
 GOOGLE_OAUTH_CLIENT_CLASS = env(
     "GOOGLE_OAUTH_CLIENT_CLASS",
     default="integrations.google_oauth.client.HttpGoogleOAuthClient",
+)
+
+# integrations/exchange_rate — adapter selected via config, per guild.md
+# §7.6. Unlike GOOGLE_OAUTH_CLIENT_CLASS, there is no real implementation
+# to default to yet: the production provider is an explicit pending
+# decision (guild.md §16), so the fake is the default everywhere until
+# one is chosen.
+EXCHANGE_RATE_PROVIDER_CLASS = env(
+    "EXCHANGE_RATE_PROVIDER_CLASS",
+    default="integrations.exchange_rate.fake.FakeExchangeRateProvider",
 )
 
 # common/api — envelope + Problem Details error shape (guild.md §5.3/§5.4),
