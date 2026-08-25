@@ -53,12 +53,37 @@ def test_category_and_brand_facets_become_filter_clauses() -> None:
     assert {"term": {"brand_id": "brand-1"}} in filters
 
 
-def test_attribute_value_facets_become_multiple_filter_clauses() -> None:
-    body = build_search_query(attribute_value_ids=["v1", "v2"])
+def test_values_of_one_attribute_are_or_ed_into_a_single_clause() -> None:
+    """This used to emit one `term` clause per value, which AND-ed them:
+    ticking Red and Blue in one colour facet asked for a Product carrying
+    both values of the same Attribute, and the answer to that is always no
+    results."""
+    body = build_search_query(attribute_filters=[("color", "red"), ("color", "blue")])
 
     filters = body["query"]["bool"]["filter"]
-    assert {"term": {"attribute_value_ids": "v1"}} in filters
-    assert {"term": {"attribute_value_ids": "v2"}} in filters
+    assert filters == [{"terms": {"attributes": ["color:red", "color:blue"]}}]
+
+
+def test_different_attributes_are_and_ed_across_clauses() -> None:
+    body = build_search_query(attribute_filters=[("color", "red"), ("size", "m")])
+
+    filters = body["query"]["bool"]["filter"]
+    assert {"terms": {"attributes": ["color:red"]}} in filters
+    assert {"terms": {"attributes": ["size:m"]}} in filters
+    assert len(filters) == 2
+
+
+def test_or_within_and_and_across_combine() -> None:
+    """The conventional storefront rule, in one assertion: red OR blue,
+    and size M."""
+    body = build_search_query(
+        attribute_filters=[("color", "red"), ("size", "m"), ("color", "blue")]
+    )
+
+    filters = body["query"]["bool"]["filter"]
+    assert {"terms": {"attributes": ["color:red", "color:blue"]}} in filters
+    assert {"terms": {"attributes": ["size:m"]}} in filters
+    assert len(filters) == 2
 
 
 def test_price_range_facet() -> None:

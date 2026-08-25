@@ -68,7 +68,14 @@ def build_index_mapping() -> dict:
             },
             "category_ids": {"type": "keyword"},
             "brand_id": {"type": "keyword"},
-            "attribute_value_ids": {"type": "keyword"},
+            # "<attribute code>:<value code>", e.g. "color:red". A composite
+            # token rather than a nested object: grouping filters by Attribute
+            # is then a matter of splitting the string, and one terms
+            # aggregation would count every pair. A nested field would model
+            # it more literally and buy a capability never needed -- asking
+            # which attributes co-occur on one Variant -- at the cost of
+            # nested queries throughout.
+            "attributes": {"type": "keyword"},
             "base_price_vnd": {"type": "long"},
             "is_available": {"type": "boolean"},
             # Placeholders — populated once Order/Review data exists

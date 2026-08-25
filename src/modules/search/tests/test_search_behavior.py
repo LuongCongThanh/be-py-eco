@@ -32,7 +32,7 @@ def _index_doc(client, index, doc_id, **fields):
         "name": "",
         "category_ids": [],
         "brand_id": None,
-        "attribute_value_ids": [],
+        "attributes": [],
         "base_price_vnd": None,
         "is_available": True,
         "popularity": 0,
@@ -95,3 +95,27 @@ def test_exact_sku_ranks_above_fuzzy_text_match(opensearch_index) -> None:
     result = client.search(index=name, body=body)
 
     assert result["hits"]["hits"][0]["_id"] == "exact-sku"
+
+
+def test_multi_select_within_one_facet_returns_both(opensearch_index) -> None:
+    """OR within a facet, AND across facets -- the semantics the flat
+    `attribute_value_ids` list made impossible to express.
+
+    NOTE: like every test in this module, this needs a live cluster and was
+    not run in the environment it was written in. The query *shape* it
+    depends on is proven without a cluster in test_search_query.py; what
+    only a real cluster can confirm is that OpenSearch reads a `terms`
+    clause on a keyword field the way this assumes.
+    """
+    client, name = opensearch_index
+    _index_doc(client, name, "red-m", attributes=["color:red", "size:m"])
+    _index_doc(client, name, "blue-m", attributes=["color:blue", "size:m"])
+    _index_doc(client, name, "green-m", attributes=["color:green", "size:m"])
+    _index_doc(client, name, "red-l", attributes=["color:red", "size:l"])
+
+    body = build_search_query(
+        attribute_filters=[("color", "red"), ("color", "blue"), ("size", "m")]
+    )
+    result = client.search(index=name, body=body)
+
+    assert {hit["_id"] for hit in result["hits"]["hits"]} == {"red-m", "blue-m"}

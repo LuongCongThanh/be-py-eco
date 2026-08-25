@@ -47,7 +47,7 @@ def build_search_query(
     category_id: str | None = None,
     price_min: int | None = None,
     price_max: int | None = None,
-    attribute_value_ids: list[str] | None = None,
+    attribute_filters: list[tuple[str, str]] | None = None,
     brand_id: str | None = None,
     available_only: bool = False,
     sort: str = "relevance",
@@ -80,8 +80,16 @@ def build_search_query(
         filters.append({"term": {"category_ids": category_id}})
     if brand_id:
         filters.append({"term": {"brand_id": brand_id}})
-    for value_id in attribute_value_ids or []:
-        filters.append({"term": {"attribute_value_ids": value_id}})
+    # OR within one Attribute, AND across Attributes -- the conventional
+    # storefront semantics. Every value used to become its own `term` clause,
+    # which AND-ed them all: ticking Red and Blue in one colour facet asked
+    # for a Product carrying both values of the same Attribute, and the
+    # standard answer to that is no results at all.
+    by_attribute: dict[str, list[str]] = {}
+    for attribute_code, value_code in attribute_filters or []:
+        by_attribute.setdefault(attribute_code, []).append(f"{attribute_code}:{value_code}")
+    for tokens in by_attribute.values():
+        filters.append({"terms": {"attributes": tokens}})
     if price_min is not None or price_max is not None:
         price_range: dict[str, int] = {}
         if price_min is not None:

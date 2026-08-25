@@ -66,4 +66,31 @@ def test_document_includes_category_and_attribute_ids() -> None:
     document = build_product_document(product, "vi")
 
     assert document["category_ids"] == [str(category.id)]
-    assert document["attribute_value_ids"] == [str(red.id)]
+    assert document["attributes"] == ["color:red"]
+
+
+@pytest.mark.django_db
+def test_attributes_are_flattened_across_every_variant() -> None:
+    """A Product with a red-S Variant and a blue-M Variant matches
+    `color=red AND size=m`, even though no single Variant is red-M.
+
+    Written down because it looks like a bug and is not: a Customer filters
+    to find a Product and picks the Variant on its detail page. Matching at
+    Variant level would need one document per Variant.
+    """
+    product = create_product(primary_category=create_category())
+    color = Attribute.objects.create(code="color")
+    size = Attribute.objects.create(code="size")
+    red = AttributeValue.objects.create(attribute=color, code="red")
+    blue = AttributeValue.objects.create(attribute=color, code="blue")
+    small = AttributeValue.objects.create(attribute=size, code="s")
+    medium = AttributeValue.objects.create(attribute=size, code="m")
+
+    red_small = create_variant(product=product, sku="SKU-RS", base_price_vnd=1, weight_grams=1)
+    blue_medium = create_variant(product=product, sku="SKU-BM", base_price_vnd=1, weight_grams=1)
+    set_variant_attributes(variant=red_small, attribute_values=[red, small])
+    set_variant_attributes(variant=blue_medium, attribute_values=[blue, medium])
+
+    document = build_product_document(product, locale="vi")
+
+    assert document["attributes"] == ["color:blue", "color:red", "size:m", "size:s"]

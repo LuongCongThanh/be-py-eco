@@ -15,11 +15,37 @@ contract, which is a separate decision from validating input.
 
 from __future__ import annotations
 
-from drf_spectacular.utils import extend_schema_serializer
+from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from rest_framework import serializers
 
 from common.api.pagination import CursorPageSerializer
 from modules.search.selectors.search_query import SORT_CLAUSES
+
+
+@extend_schema_field(serializers.CharField)
+class AttributeFilterField(serializers.Field):
+    """One `<attribute>:<value>` facet selection, split at the boundary.
+
+    Subclasses `Field` rather than `CharField` because it does not return a
+    string: it returns the parsed pair, and narrowing a supertype's return
+    type would be a lie the type checker rightly rejects.
+
+    Validated here rather than deeper in so a malformed selection is a 400
+    naming the parameter, instead of a meaningless token reaching OpenSearch
+    and coming back as zero results -- the very symptom this facet work
+    exists to fix.
+    """
+
+    def to_internal_value(self, data: object) -> tuple[str, str]:
+        attribute, separator, value = str(data).partition(":")
+        if not separator or not attribute or not value or ":" in value:
+            raise serializers.ValidationError(
+                'Expected "<attribute>:<value>", for example "color:red".'
+            )
+        return attribute, value
+
+    def to_representation(self, value: tuple[str, str]) -> str:
+        return ":".join(value)
 
 
 class SearchQuerySerializer(CursorPageSerializer):
@@ -36,10 +62,11 @@ class SearchQuerySerializer(CursorPageSerializer):
     )
     category_id = serializers.UUIDField(required=False)
     brand_id = serializers.UUIDField(required=False)
-    attribute_value_id = serializers.ListField(
-        child=serializers.UUIDField(),
+    attribute = serializers.ListField(
+        child=AttributeFilterField(),
         required=False,
-        help_text="Repeatable. Currently AND-ed together across all values.",
+        help_text='Repeatable, as "<attribute>:<value>" (e.g. color:red). Values of '
+        "the same Attribute are OR-ed together; different Attributes are AND-ed.",
     )
     price_min = serializers.IntegerField(required=False, min_value=0)
     price_max = serializers.IntegerField(required=False, min_value=0)

@@ -8,7 +8,6 @@ demonstrate that would be testing the wrong thing.
 """
 
 from unittest.mock import patch
-from uuid import UUID, uuid4
 
 import pytest
 from django.http import QueryDict
@@ -52,15 +51,6 @@ def test_available_only_defaults_to_false_when_absent() -> None:
     assert _validate("").validated_data["available_only"] is False
 
 
-def test_repeated_attribute_value_id_becomes_a_list_of_uuids() -> None:
-    first, second = uuid4(), uuid4()
-
-    validated = _validate(f"attribute_value_id={first}&attribute_value_id={second}").validated_data
-
-    assert validated["attribute_value_id"] == [first, second]
-    assert all(isinstance(value, UUID) for value in validated["attribute_value_id"])
-
-
 def test_sort_defaults_to_relevance() -> None:
     assert _validate("").validated_data["sort"] == "relevance"
 
@@ -86,7 +76,6 @@ def test_blank_q_is_treated_as_omitted_not_as_an_error() -> None:
         ("sort=cheapest", "sort"),
         ("category_id=not-a-uuid", "category_id"),
         ("brand_id=not-a-uuid", "brand_id"),
-        ("attribute_value_id=not-a-uuid", "attribute_value_id"),
     ],
 )
 def test_invalid_input_is_rejected(query_string: str, field: str) -> None:
@@ -141,15 +130,13 @@ def test_autocomplete_without_a_prefix_is_a_400(api_client: APIClient) -> None:
 def test_valid_input_reaches_the_cluster_with_coerced_values(
     api_client: APIClient, supported_country
 ) -> None:
-    value_id = uuid4()
-
     with patch(EXECUTE_SEARCH, return_value=SearchHits(documents=[], sorts=[])) as execute:
         response = api_client.get(
             SEARCH_URL,
             {
                 "q": "áo",
                 "available_only": "1",
-                "attribute_value_id": str(value_id),
+                "attribute": "color:red",
                 "sort": "rating",
             },
         )
@@ -158,7 +145,7 @@ def test_valid_input_reaches_the_cluster_with_coerced_values(
     body = execute.call_args.kwargs["body"]
     assert body["sort"] == [{"rating": "desc"}, {"product_id": "asc"}]
     assert {"term": {"is_available": True}} in body["query"]["bool"]["filter"]
-    assert {"term": {"attribute_value_ids": str(value_id)}} in body["query"]["bool"]["filter"]
+    assert {"terms": {"attributes": ["color:red"]}} in body["query"]["bool"]["filter"]
 
 
 @pytest.mark.django_db
@@ -176,3 +163,33 @@ def test_unsupported_currency_is_refused_outside_the_serializer(
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["code"] == "localization.unsupported_currency"
     execute.assert_not_called()
+
+
+# --- facet selections ---------------------------------------------------
+
+
+@pytest.mark.parametrize("raw", ["color:red", "size:m", "material:organic-cotton"])
+def test_a_well_formed_facet_selection_becomes_a_pair(raw: str) -> None:
+    validated = _validate(f"attribute={raw}").validated_data
+
+    assert validated["attribute"] == [tuple(raw.split(":"))]
+
+
+@pytest.mark.parametrize("raw", ["red", "color:", ":red", "color:red:extra", ":"])
+def test_a_malformed_facet_selection_is_refused(raw: str) -> None:
+    """A meaningless token used to reach OpenSearch and come back as zero
+    results -- indistinguishable from an honest empty result."""
+    serializer = _validate(f"attribute={raw}")
+
+    assert serializer.is_valid() is False
+    assert "attribute" in serializer.errors
+
+
+def test_repeated_facet_selections_are_all_kept() -> None:
+    validated = _validate("attribute=color:red&attribute=color:blue&attribute=size:m")
+
+    assert validated.validated_data["attribute"] == [
+        ("color", "red"),
+        ("color", "blue"),
+        ("size", "m"),
+    ]

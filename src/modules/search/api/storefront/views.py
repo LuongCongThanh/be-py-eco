@@ -34,7 +34,7 @@ _FILTER_PARAMS = (
     "q",
     "category_id",
     "brand_id",
-    "attribute_value_id",
+    "attribute",
     "price_min",
     "price_max",
     "available_only",
@@ -98,8 +98,7 @@ class ProductSearchView(APIView):
             text=params.get("q"),
             category_id=str(params["category_id"]) if "category_id" in params else None,
             brand_id=str(params["brand_id"]) if "brand_id" in params else None,
-            attribute_value_ids=[str(value) for value in params.get("attribute_value_id", [])]
-            or None,
+            attribute_filters=params.get("attribute") or None,
             price_min=params.get("price_min"),
             price_max=params.get("price_max"),
             available_only=params["available_only"],
