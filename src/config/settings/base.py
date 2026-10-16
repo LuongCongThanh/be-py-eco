@@ -67,7 +67,10 @@ INSTALLED_APPS = [
     "common.db",
     "modules.accounts",
     "modules.audit",
+    "modules.catalog",
     "modules.localization",
+    "modules.media",
+    "modules.translation",
 ]
 
 MIDDLEWARE = [
@@ -113,6 +116,13 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+# UI/error-string translation via Django gettext — guild.md §15 Slice 2's
+# `translation` module. Distinct from `modules.translation`'s per-locale
+# content tables, which hold Product/Category/Brand/Attribute/SEO copy,
+# not static system strings.
+LANGUAGES = [("vi", "Tiếng Việt"), ("en", "English")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 STATIC_URL = "static/"
 

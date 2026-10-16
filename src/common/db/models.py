@@ -62,3 +62,23 @@ class IdempotencyRecord(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.action}:{self.idempotency_key}"
+
+
+class OutboxEvent(BaseModel):
+    """Transactional outbox — ADR-0004. A row here must be inserted in the
+    same database transaction as the state change it announces; a
+    dispatcher (no consumer exists until Slice 3's search sync) delivers
+    it to Celery afterward. See `common/db/outbox.py` for the write-side
+    helper every module's services call instead of inserting directly.
+    """
+
+    event_type = models.CharField(max_length=100)
+    payload = models.JSONField()
+    dispatched_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        app_label = "common_db"
+        db_table = "outbox_event"
+
+    def __str__(self) -> str:
+        return self.event_type
