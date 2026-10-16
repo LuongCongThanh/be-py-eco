@@ -11,6 +11,7 @@ from django.http import HttpRequest
 
 from modules.localization.errors import SupportedCountryNotConfiguredError
 from modules.localization.models import SupportedCountry
+from modules.localization.services.locale_matching import best_locale_match
 
 
 @dataclass(frozen=True)
@@ -25,16 +26,8 @@ def suggest_locale(request: HttpRequest) -> LocaleSuggestion:
     if country is None:
         raise SupportedCountryNotConfiguredError
 
-    locale = _best_locale_match(request, country.allowed_locales) or country.default_locale
+    accept_language = request.META.get("HTTP_ACCEPT_LANGUAGE", "")
+    locale = best_locale_match(accept_language, country.allowed_locales) or country.default_locale
     return LocaleSuggestion(
         country_code=str(country.code), locale=locale, currency=country.allowed_currencies[0]
     )
-
-
-def _best_locale_match(request: HttpRequest, allowed_locales: list[str]) -> str | None:
-    accept_language = request.META.get("HTTP_ACCEPT_LANGUAGE", "")
-    for part in accept_language.split(","):
-        lang = part.split(";")[0].strip().split("-")[0].lower()
-        if lang in allowed_locales:
-            return lang
-    return None

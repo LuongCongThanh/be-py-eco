@@ -28,6 +28,10 @@ _Avoid_: Merchant, Seller, Vendor
 A physical location where inventory for Variants is held and fulfilled.
 _Avoid_: Stockroom, inventory location
 
+**Storefront**:
+The public API surface a Customer browses and buys through, serving only published catalog content at prices resolved into their Transaction Currency; distinct from the Admin API, which the Merchant's internal operators work through.
+_Avoid_: Shop, frontend, public API, client
+
 **Supported Country**:
 A country where the Merchant accepts orders, with defined currencies, languages, taxes, shipping methods, and payment methods.
 _Avoid_: Market, region

@@ -1,0 +1,3 @@
+# Define currency support by minor unit, not by the sync list
+
+A Transaction Currency is one the system can convert into, which means one with a configured minor-unit exponent; asking for anything else is a client error and is refused with `pricing.unsupported_currency`. Membership of `SUPPORTED_TARGET_CURRENCIES` is deliberately not the test — that constant lists which rates the periodic sync fetches, an operational concern, so a supported currency whose rate is missing or expired degrades the displayed price with `is_stale` instead of failing. Keeping the two apart means adding a currency is a configuration change rather than a breaking one, and lets a Customer be told the difference between "we do not sell in that currency" and "we cannot price it right now".

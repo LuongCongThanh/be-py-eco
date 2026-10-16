@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
+from common.api.schema import enveloped
 from common.api.throttling import AuthAccountRateThrottle, AuthIPRateThrottle
 from modules.accounts.api.storefront.serializers import (
     ConfirmEmailChangeSerializer,
@@ -62,7 +63,7 @@ class RegisterView(APIView):
         summary="Register a new customer",
         description="Creates a new customer account and sends an email verification link.",
         request=RegisterSerializer,
-        responses={201: CustomerResponseSerializer},
+        responses={201: enveloped(CustomerResponseSerializer)},
     )
     def post(self, request: Request) -> Response:
         serializer = RegisterSerializer(data=request.data)
@@ -83,7 +84,7 @@ class VerifyEmailView(APIView):
             "Confirms a customer's email using the verification token sent after registration."
         ),
         request=VerifyEmailSerializer,
-        responses=CustomerResponseSerializer,
+        responses=enveloped(CustomerResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = VerifyEmailSerializer(data=request.data)
@@ -104,7 +105,7 @@ class LoginView(APIView):
             "Authenticates a customer with email and password, returning access and refresh tokens."
         ),
         request=LoginSerializer,
-        responses=TokenResponseSerializer,
+        responses=enveloped(TokenResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
@@ -125,7 +126,7 @@ class GoogleLoginView(APIView):
             "Authenticates a customer using a Google ID token, returning access and refresh tokens."
         ),
         request=GoogleLoginSerializer,
-        responses=TokenResponseSerializer,
+        responses=enveloped(TokenResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = GoogleLoginSerializer(data=request.data)
@@ -143,7 +144,7 @@ class RefreshTokenView(APIView):
         summary="Refresh access token",
         description="Rotates a refresh token and issues a new access/refresh token pair.",
         request=RefreshTokenSerializer,
-        responses=TokenResponseSerializer,
+        responses=enveloped(TokenResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = RefreshTokenSerializer(data=request.data)
@@ -161,7 +162,7 @@ class MeView(APIView):
     @extend_schema(
         summary="Get current customer",
         description="Returns the profile of the authenticated customer.",
-        responses=CustomerResponseSerializer,
+        responses=enveloped(CustomerResponseSerializer),
     )
     def get(self, request: Request) -> Response:
         data = _customer_representation(cast(Customer, request.user))
@@ -175,7 +176,7 @@ class UpdateLocalePreferenceView(APIView):
         summary="Update locale preference",
         description="Updates the authenticated customer's preferred locale and currency.",
         request=UpdateLocalePreferenceSerializer,
-        responses=CustomerResponseSerializer,
+        responses=enveloped(CustomerResponseSerializer),
     )
     def patch(self, request: Request) -> Response:
         serializer = UpdateLocalePreferenceSerializer(data=request.data)
@@ -193,7 +194,8 @@ class SessionListView(APIView):
     @extend_schema(
         summary="List active sessions",
         description="Returns the authenticated customer's active login sessions.",
-        responses=SessionResponseSerializer(many=True),
+        operation_id="storefront_accounts_sessions_list",
+        responses=enveloped(SessionResponseSerializer, many=True),
     )
     def get(self, request: Request) -> Response:
         customer = cast(Customer, request.user)
@@ -269,7 +271,7 @@ class ConfirmPasswordResetView(APIView):
             "Sets a new password using the reset token and returns the updated customer profile."
         ),
         request=ConfirmPasswordResetSerializer,
-        responses=CustomerResponseSerializer,
+        responses=enveloped(CustomerResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = ConfirmPasswordResetSerializer(data=request.data)
@@ -308,7 +310,7 @@ class ConfirmEmailChangeView(APIView):
         summary="Confirm email change",
         description="Confirms the pending email change using the token sent to the new address.",
         request=ConfirmEmailChangeSerializer,
-        responses=CustomerResponseSerializer,
+        responses=enveloped(CustomerResponseSerializer),
     )
     def post(self, request: Request) -> Response:
         serializer = ConfirmEmailChangeSerializer(data=request.data)

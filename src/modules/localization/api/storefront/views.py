@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
+from common.api.schema import enveloped
 from modules.localization.api.storefront.serializers import LocaleSuggestionResponseSerializer
 from modules.localization.services.suggest_locale import suggest_locale
 
@@ -24,7 +25,7 @@ class LocaleSuggestionView(APIView):
             "address/headers."
         ),
         request=None,
-        responses=LocaleSuggestionResponseSerializer,
+        responses=enveloped(LocaleSuggestionResponseSerializer),
     )
     def get(self, request: Request) -> Response:
         suggestion = suggest_locale(request._request)

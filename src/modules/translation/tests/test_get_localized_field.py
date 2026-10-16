@@ -41,9 +41,7 @@ def test_falls_back_to_default_locale_when_requested_locale_missing() -> None:
 def test_unapproved_translation_is_not_returned() -> None:
     product = _make_product()
     set_translation(entity=product, locale="vi", field="name", value="Áo thun")
-    set_translation(
-        entity=product, locale="en", field="name", value="Draft", is_ai_generated=True
-    )
+    set_translation(entity=product, locale="en", field="name", value="Draft", is_ai_generated=True)
 
     result = get_localized_field(product, field="name", locale="en", default_locale="vi")
 

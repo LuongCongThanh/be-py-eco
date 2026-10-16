@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.api.envelope import success_envelope
+from common.api.schema import enveloped
 from modules.accounts.api.permissions import IsStaff
 from modules.catalog.api.admin.serializers import CategoryDetailSerializer, ProductDetailSerializer
 from modules.catalog.constants import DEFAULT_LOCALE
@@ -32,7 +33,7 @@ class CategoryDetailView(APIView):
             "Returns a Category's translated name for the requested locale, falling back to "
             "the default locale (with `is_fallback: true`) when no translation exists for it."
         ),
-        responses=CategoryDetailSerializer,
+        responses=enveloped(CategoryDetailSerializer),
     )
     def get(self, request: Request, category_id: UUID) -> Response:
         try:
@@ -72,7 +73,7 @@ class ProductPublishView(APIView):
             "Variant, or no ready media asset exists."
         ),
         request=None,
-        responses=ProductDetailSerializer,
+        responses=enveloped(ProductDetailSerializer),
     )
     def post(self, request: Request, product_id: UUID) -> Response:
         try:
